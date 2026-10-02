@@ -1,0 +1,4 @@
+.venv/
+.ansible/
+__pycache__/
+.vault_pass

@@ -1,0 +1,24 @@
+---
+repos:
+  - repo: builtin
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: detect-private-key
+  - repo: local
+    hooks:
+      - id: ansible-lint
+        name: ansible-lint
+        entry: uv run ansible-lint
+        language: system
+        pass_filenames: false
+        files: \.(ya?ml|j2)$
