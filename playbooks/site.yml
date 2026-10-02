@@ -1,0 +1,21 @@
+---
+- name: Configure servers
+  hosts: servers
+  become: true
+  roles:
+    - role: users
+      tags: [users]
+    - role: ssh
+      tags: [ssh]
+    - role: unattended_upgrades
+      tags: [unattended_upgrades]
+    - role: docker
+      tags: [docker]
+    - role: postgres
+      tags: [postgres]
+    - role: pyrigs
+      tags: [pyrigs]
+    - role: nginx
+      tags: [nginx, certbot]
+    - role: certbot
+      tags: [certbot]
