@@ -1,0 +1,63 @@
+# {{ ansible_managed }}
+{% set site = item.item %}
+{% set location_body %}
+{% if site.upstream is defined %}
+        proxy_pass {{ site.upstream }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+{% else %}
+        return 404;
+{% endif %}
+{% endset %}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ site.server_names | join(' ') }};
+
+    location /.well-known/acme-challenge/ {
+        root {{ nginx_acme_webroot }};
+    }
+
+    location / {
+{% if nginx_has_cert %}
+        return 301 https://$host$request_uri;
+{% else %}
+{{ location_body }}
+{% endif %}
+    }
+}
+{% if nginx_has_cert %}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name {{ site.server_names | join(' ') }};
+
+    ssl_certificate /etc/letsencrypt/live/{{ site.name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ site.name }}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    client_max_body_size {{ site.client_max_body_size | default('20m') }};
+
+{% if site.static_root is defined %}
+    location /static/ {
+        root {{ site.static_root }};
+        try_files $uri @app;
+        access_log off;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location @app {
+{{ location_body }}
+    }
+
+{% endif %}
+    location / {
+{{ location_body }}
+    }
+}
+{% endif %}

@@ -1,0 +1,34 @@
+---
+- name: Install nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    cache_valid_time: 3600
+  register: nginx_install
+
+# In check mode nginx isn't installed yet, so its paths and service don't exist.
+- name: Configure nginx
+  when: not (ansible_check_mode and nginx_install is changed)
+  block:
+    - name: Create the ACME webroot
+      ansible.builtin.file:
+        path: "{{ nginx_acme_webroot }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Remove the default site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Reload nginx
+
+    - name: Enable and start nginx
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Configure site vhosts
+      ansible.builtin.include_tasks: vhosts.yml

@@ -1,0 +1,11 @@
+---
+# Directory served for ACME HTTP-01 challenges (shared with certbot).
+nginx_acme_webroot: /var/www/certbot
+
+# Sites to serve. Each entry:
+#   - name: rigs                      # config file and certificate name
+#     server_names: [example.org]
+#     upstream: http://127.0.0.1:8080 # optional, proxied when set (else 404)
+#     static_root: /var/www/app       # optional, serves <root>/static/ at /static/
+# A site gets HTTPS once /etc/letsencrypt/live/<name>/ exists.
+nginx_sites: []
