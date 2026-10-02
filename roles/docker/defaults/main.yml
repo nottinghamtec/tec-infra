@@ -1,0 +1,11 @@
+---
+# Packages installed from Docker's official apt repository.
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+# Users added to the "docker" group. Membership is root-equivalent.
+docker_users: []
