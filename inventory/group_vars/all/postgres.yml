@@ -1,0 +1,13 @@
+---
+postgres_roles:
+  - name: rigs
+    password: "{{ vault_postgres_rigs_password }}"
+
+postgres_databases:
+  - name: rigs
+    owner: rigs
+
+# Let the app container connect over the mounted unix socket with a password.
+postgres_local_socket_access:
+  - database: rigs
+    user: rigs

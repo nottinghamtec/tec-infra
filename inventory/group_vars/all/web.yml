@@ -1,0 +1,14 @@
+---
+nginx_sites:
+  - name: rigs
+    server_names:
+      - rigs.nottinghamtec.co.uk
+    upstream: http://127.0.0.1:8000
+    static_root: "{{ pyrigs_static_root }}"
+
+certbot_email: it@nottinghamtec.co.uk
+
+certbot_certificates:
+  - name: rigs
+    domains:
+      - rigs.nottinghamtec.co.uk

@@ -1,0 +1,24 @@
+---
+pyrigs_port: 8000
+
+pyrigs_env:
+  DEBUG: "false"
+  STAGING: "false"
+  DOMAIN: rigs.nottinghamtec.co.uk
+  DJANGO_ALLOWED_HOSTS: rigs.nottinghamtec.co.uk
+  DATABASE_ENGINE: postgresql
+  DATABASE_NAME: rigs
+  DATABASE_USERNAME: rigs
+  DATABASE_HOST: /var/run/postgresql
+  DATABASE_PORT: "5432"
+  EMAIL_HOST: smtp.office365.com
+  EMAIL_PORT: '587'
+  EMAIL_HOST_USER: 'noreply@nottinghamtec.co.uk'
+  EMAIL_FROM: 'noreply@nottinghamtec.co.uk'
+  EMAIL_USE_TLS: '1'
+  HCAPTCHA_SITEKEY: 9d9e8716-de84-4c4d-8c8d-726198d2d596
+
+# Secrets live in the vault; the database password is shared with the postgres role.
+pyrigs_secret_env: >-
+  {{ vault_pyrigs_secret_env
+     | combine({'DATABASE_PASSWORD': vault_postgres_rigs_password}) }}

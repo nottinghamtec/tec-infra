@@ -1,0 +1,8 @@
+---
+users_accounts:
+  - name: joe
+    ssh_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPyNdEOw7tfOHWCM0w2A7UzspnYYpNiF+nak51dcx3d7 joe@ivo
+    sudo: true
+    groups: []
+    state: present
