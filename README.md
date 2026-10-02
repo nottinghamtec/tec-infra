@@ -149,6 +149,22 @@ The environment is in `/etc/pyrigs/pyrigs.env` (root only). The app listens on
 (`/var/run/postgresql`). If a migration fails the container will restart in a
 loop; the cause will be in `docker logs pyrigs`.
 
+### Scheduled tasks
+
+`pyrigs_cron_jobs` (in `roles/pyrigs/defaults/main.yml`) defines the cron jobs,
+written to `/etc/cron.d/pyrigs`. Each runs `docker exec pyrigs ...` and logs to
+the journal. Times are server time (UTC).
+
+| Job       | When            | Command                                                  |
+| --------- | --------------- | -------------------------------------------------------- |
+| Cleanup   | daily at 00:00  | `manage.py cleanupregistration` then `manage.py usercleanup` |
+| Reminders | daily at 08:00  | `manage.py send_reminders`                               |
+
+```bash
+journalctl -t pyrigs-cleanup
+journalctl -t pyrigs-reminders
+```
+
 ### Certificates
 
 Certbot's systemd timer renews automatically, and a deploy hook reloads nginx.

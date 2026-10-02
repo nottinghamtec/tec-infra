@@ -27,3 +27,18 @@ pyrigs_env_dir: /etc/pyrigs
 # Collected static files are copied out of the image to <root>/static, which
 # nginx serves directly (falling back to the app, which can also serve them).
 pyrigs_static_root: /var/www/pyrigs
+
+# Scheduled tasks, run with `docker exec` inside the container and written to
+# /etc/cron.d/pyrigs. Times are server time (UTC). Output goes to the journal:
+# journalctl -t <tag>. Set state: absent on an entry to remove it.
+pyrigs_cron_jobs:
+  - name: pyrigs cleanup
+    tag: pyrigs-cleanup
+    minute: "0"
+    hour: "0"
+    command: python manage.py cleanupregistration && python manage.py usercleanup
+  - name: pyrigs reminders
+    tag: pyrigs-reminders
+    minute: "0"
+    hour: "8"
+    command: python manage.py send_reminders
