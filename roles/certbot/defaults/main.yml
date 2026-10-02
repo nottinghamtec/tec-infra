@@ -1,0 +1,7 @@
+---
+certbot_email: ""
+
+# Each entry:
+#   - name: rigs
+#     domains: [example.org]
+certbot_certificates: []

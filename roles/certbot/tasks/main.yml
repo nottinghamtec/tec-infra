@@ -1,0 +1,60 @@
+---
+- name: Install certbot
+  ansible.builtin.apt:
+    name: certbot
+    state: present
+    cache_valid_time: 3600
+  register: certbot_install
+
+# In check mode certbot isn't installed yet, so its paths and timer don't exist.
+- name: Configure certbot
+  when: not (ansible_check_mode and certbot_install is changed)
+  block:
+    - name: Create the certbot deploy hook directory
+      ansible.builtin.file:
+        path: /etc/letsencrypt/renewal-hooks/deploy
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install the nginx reload deploy hook
+      ansible.builtin.template:
+        src: reload-nginx.sh.j2
+        dest: /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Request certificates
+      ansible.builtin.command:
+        argv: >-
+          {{ ['certbot', 'certonly', '--webroot',
+              '--webroot-path', nginx_acme_webroot,
+              '--cert-name', item.name,
+              '--non-interactive', '--agree-tos']
+             + (['--email', certbot_email] if certbot_email
+                else ['--register-unsafely-without-email'])
+             + (['-d'] | product(item.domains) | flatten) }}
+        creates: "/etc/letsencrypt/live/{{ item.name }}/fullchain.pem"
+      loop: "{{ certbot_certificates }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: certbot_issue
+
+    - name: Enable the certbot renewal timer
+      ansible.builtin.service:
+        name: certbot.timer
+        state: started
+        enabled: true
+
+    - name: Switch sites to HTTPS now that certificates exist
+      ansible.builtin.include_role:
+        name: nginx
+        tasks_from: vhosts
+      when: certbot_issue is changed  # noqa: no-handler
+
+    - name: Test certificate renewal
+      ansible.builtin.command: certbot renew --dry-run
+      changed_when: false
+      when: certbot_issue is changed  # noqa: no-handler
