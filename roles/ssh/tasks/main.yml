@@ -1,0 +1,24 @@
+---
+- name: Ensure the OpenSSH server is installed
+  ansible.builtin.apt:
+    name: openssh-server
+    state: present
+    cache_valid_time: 3600
+
+- name: Ensure the sshd drop-in directory exists
+  ansible.builtin.file:
+    path: "{{ ssh_dropin_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Disable SSH password authentication
+  ansible.builtin.template:
+    src: 00-ansible-hardening.conf.j2
+    dest: "{{ ssh_dropin_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload sshd
