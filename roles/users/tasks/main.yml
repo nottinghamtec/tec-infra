@@ -1,0 +1,7 @@
+---
+- name: Manage users
+  ansible.builtin.include_tasks: user.yml
+  loop: "{{ users_accounts }}"
+  loop_control:
+    loop_var: user
+    label: "{{ user.name }}"

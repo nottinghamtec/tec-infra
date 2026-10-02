@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  author: Joe Banks
+  description: Manage local users with SSH key authentication
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Debian
+      versions: [all]
+    - name: Ubuntu
+      versions: [all]
+  galaxy_tags: [users, ssh]
+dependencies: []

@@ -1,0 +1,9 @@
+---
+# users_accounts:
+#   - name: alice
+#     ssh_keys:
+#       - ssh-ed25519 AAAA... alice@laptop
+#     sudo: true          # optional, passwordless sudo (default false)
+#     groups: []          # optional extra groups
+#     state: present      # optional, or "absent" to remove the user
+users_accounts: []

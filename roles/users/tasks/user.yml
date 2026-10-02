@@ -1,0 +1,46 @@
+---
+- name: Remove user {{ user.name }}
+  ansible.builtin.user:
+    name: "{{ user.name }}"
+    state: absent
+    remove: true
+  when: (user.state | default('present')) == 'absent'
+
+- name: Configure user {{ user.name }}
+  when: (user.state | default('present')) == 'present'
+  block:
+    - name: Create user {{ user.name }}
+      ansible.builtin.user:
+        name: "{{ user.name }}"
+        shell: /bin/bash
+        groups: "{{ user.groups | default([]) }}"
+        append: true
+        password_lock: true
+        create_home: true
+        state: present
+      register: users_create_result
+
+    - name: Authorise SSH keys for {{ user.name }}
+      ansible.posix.authorized_key:
+        user: "{{ user.name }}"
+        key: "{{ user.ssh_keys | join('\n') }}"
+        exclusive: true
+        state: present
+      # In check mode the user may not exist yet, which authorized_key rejects.
+      when: not (ansible_check_mode and users_create_result is changed)
+
+    - name: Grant passwordless sudo to {{ user.name }}
+      ansible.builtin.copy:
+        content: "{{ user.name }} ALL=(ALL) NOPASSWD:ALL\n"
+        dest: "/etc/sudoers.d/90-ansible-{{ user.name }}"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: /usr/sbin/visudo -cf %s
+      when: user.sudo | default(false)
+
+    - name: Revoke sudo from {{ user.name }}
+      ansible.builtin.file:
+        path: "/etc/sudoers.d/90-ansible-{{ user.name }}"
+        state: absent
+      when: not (user.sudo | default(false))
