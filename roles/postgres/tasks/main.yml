@@ -1,0 +1,75 @@
+---
+- name: Install PostgreSQL
+  ansible.builtin.apt:
+    name: "{{ postgres_packages }}"
+    state: present
+    cache_valid_time: 3600
+  register: postgres_install
+
+- name: Enable and start PostgreSQL
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+    enabled: true
+  # In check mode the package isn't installed, so the service doesn't exist yet.
+  when: not (ansible_check_mode and postgres_install is changed)
+
+- name: Create PostgreSQL roles
+  community.postgresql.postgresql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    state: present
+  become: true
+  become_user: postgres
+  loop: "{{ postgres_roles }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+  when: not (ansible_check_mode and postgres_install is changed)
+
+- name: Create PostgreSQL databases
+  community.postgresql.postgresql_db:
+    name: "{{ item.name }}"
+    owner: "{{ item.owner }}"
+    state: present
+  become: true
+  become_user: postgres
+  loop: "{{ postgres_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: not (ansible_check_mode and postgres_install is changed)
+
+- name: Locate pg_hba.conf
+  community.postgresql.postgresql_query:
+    query: SHOW hba_file
+    login_db: postgres
+  become: true
+  become_user: postgres
+  register: postgres_hba_file
+  changed_when: false
+  when:
+    - postgres_local_socket_access | length > 0
+    - not (ansible_check_mode and postgres_install is changed)
+
+- name: Allow password authentication over the local socket
+  ansible.builtin.lineinfile:
+    path: "{{ postgres_hba_file.query_result[0].hba_file }}"
+    regexp: '^local\s+{{ item.database }}\s+{{ item.user }}\s'
+    line: "local   {{ item.database }}   {{ item.user }}   scram-sha-256"
+    insertbefore: '^local\s+all\s+all\s'
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  loop: "{{ postgres_local_socket_access }}"
+  loop_control:
+    label: "{{ item.database }}/{{ item.user }}"
+  register: postgres_hba_rules
+  when:
+    - postgres_local_socket_access | length > 0
+    - not (ansible_check_mode and postgres_install is changed)
+
+- name: Reload PostgreSQL to apply pg_hba.conf changes
+  ansible.builtin.service:
+    name: postgresql
+    state: reloaded
+  when: postgres_hba_rules is changed  # noqa: no-handler

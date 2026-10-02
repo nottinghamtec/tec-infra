@@ -1,0 +1,21 @@
+---
+postgres_packages:
+  - postgresql
+  - postgresql-client
+  - python3-psycopg2
+
+# Login roles to create. Passwords should come from vaulted variables.
+#   - name: app
+#     password: "{{ vault_postgres_app_password }}"
+postgres_roles: []
+
+# Databases to create, with the role that owns each.
+#   - name: app
+#     owner: app
+postgres_databases: []
+
+# Allow password (scram) logins over the local unix socket, which the default
+# pg_hba.conf only permits via peer authentication.
+#   - database: app
+#     user: app
+postgres_local_socket_access: []
