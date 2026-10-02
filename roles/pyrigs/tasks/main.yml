@@ -1,0 +1,113 @@
+---
+- name: Check the container environment is complete
+  ansible.builtin.assert:
+    that:
+      - pyrigs_required_env is subset(pyrigs_merged_env.keys() | list)
+      - pyrigs_merged_env.values() | select('equalto', 'CHANGEME') | list | length == 0
+    fail_msg: >-
+      pyrigs_env / pyrigs_secret_env must define {{ pyrigs_required_env | join(', ') }}
+      and no value may be the CHANGEME placeholder.
+    quiet: true
+  vars:
+    pyrigs_merged_env: "{{ pyrigs_env | combine(pyrigs_secret_env) }}"
+    pyrigs_required_env:
+      - SECRET_KEY
+      - DATABASE_PASSWORD
+      - EMAIL_HOST
+      - EMAIL_HOST_USER
+      - EMAIL_HOST_PASSWORD
+      - EMAIL_FROM
+  no_log: true
+
+- name: Create the environment directory
+  ansible.builtin.file:
+    path: "{{ pyrigs_env_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write the container environment file
+  ansible.builtin.template:
+    src: pyrigs.env.j2
+    dest: "{{ pyrigs_env_dir }}/pyrigs.env"
+    owner: root
+    group: root
+    mode: "0600"
+  register: pyrigs_env_file
+  no_log: true
+
+- name: Pull the PyRIGS image
+  community.docker.docker_image:
+    name: "{{ pyrigs_image }}"
+    source: pull
+    force_source: true
+  register: pyrigs_image_pull
+
+- name: Create the static files directory
+  ansible.builtin.file:
+    path: "{{ pyrigs_static_root }}/static"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check whether static files have been published
+  ansible.builtin.stat:
+    path: "{{ pyrigs_static_root }}/static/staticfiles.json"
+  register: pyrigs_static_manifest
+
+- name: Publish static files from the image
+  community.docker.docker_container:
+    name: "{{ pyrigs_container_name }}-static"
+    image: "{{ pyrigs_image }}"
+    user: root
+    command:
+      - sh
+      - -c
+      - find /out -mindepth 1 -delete && cp -a /app/static/. /out/
+    volumes:
+      - "{{ pyrigs_static_root }}/static:/out"
+    detach: false
+    cleanup: true
+    pull: never
+  changed_when: true
+  when:
+    - pyrigs_image_pull is changed or not pyrigs_static_manifest.stat.exists
+    - not (ansible_check_mode and pyrigs_env_file is changed)
+
+- name: Run the PyRIGS container
+  community.docker.docker_container:
+    name: "{{ pyrigs_container_name }}"
+    image: "{{ pyrigs_image }}"
+    pull: never
+    state: started
+    restart_policy: always
+    published_ports:
+      - "{{ pyrigs_bind_address }}:{{ pyrigs_port }}:{{ pyrigs_container_port }}"
+    volumes:
+      - "{{ pyrigs_postgres_socket_dir }}:{{ pyrigs_postgres_socket_dir }}"
+    env_file: "{{ pyrigs_env_dir }}/pyrigs.env"
+    command:
+      - sh
+      - -c
+      - >-
+        {{ 'python manage.py migrate --noinput && ' if pyrigs_run_migrations | bool else '' }}exec
+        gunicorn --bind 0.0.0.0:{{ pyrigs_container_port }}
+        --workers {{ pyrigs_workers }} PyRIGS.wsgi
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import socket; socket.create_connection(('127.0.0.1', {{ pyrigs_container_port }}), 2).close()"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+    log_driver: json-file
+    log_options:
+      max-size: 10m
+      max-file: "3"
+  # In check mode the env file isn't written, so the container can't be evaluated.
+  when: not (ansible_check_mode and pyrigs_env_file is changed)

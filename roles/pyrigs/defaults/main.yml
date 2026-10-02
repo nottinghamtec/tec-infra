@@ -1,0 +1,29 @@
+---
+pyrigs_image: ghcr.io/nottinghamtec/pyrigs:latest
+pyrigs_container_name: pyrigs
+
+# The container's port is published on the host at this address; keep it on
+# loopback and let nginx proxy to it.
+pyrigs_bind_address: 127.0.0.1
+pyrigs_port: 8000
+pyrigs_container_port: 8000
+pyrigs_workers: 3
+
+# PostgreSQL's unix socket directory, mounted into the container so the app can
+# reach the host database without it listening on any network.
+pyrigs_postgres_socket_dir: /var/run/postgresql
+
+# Environment for the container. Put plain settings in pyrigs_env and anything
+# sensitive in pyrigs_secret_env (sourced from the vault). Do not copy Heroku-only
+# variables such as DATABASE_URL or PORT.
+pyrigs_env: {}
+pyrigs_secret_env: {}
+
+# Run `manage.py migrate` every time the container starts, before gunicorn.
+pyrigs_run_migrations: true
+
+pyrigs_env_dir: /etc/pyrigs
+
+# Collected static files are copied out of the image to <root>/static, which
+# nginx serves directly (falling back to the app, which can also serve them).
+pyrigs_static_root: /var/www/pyrigs
