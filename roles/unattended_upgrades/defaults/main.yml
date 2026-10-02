@@ -1,0 +1,9 @@
+---
+# Reboot automatically when an upgrade requires it (e.g. a new kernel).
+unattended_upgrades_automatic_reboot: true
+# Server local time (HH:MM) at which the reboot happens.
+unattended_upgrades_reboot_time: "03:00"
+
+# Extra apt origins to upgrade automatically, in apt's origin pattern syntax.
+unattended_upgrades_extra_origins:
+  - "origin=Docker,label=Docker CE,codename=${distro_codename}"
