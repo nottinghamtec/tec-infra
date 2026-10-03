@@ -1,0 +1,34 @@
+# {{ ansible_managed }}
+name: pyrigs
+services:
+  pyrigs:
+    image: "{{ pyrigs_image_repository }}:${PYRIGS_TAG:-latest}"
+    container_name: {{ pyrigs_container_name }}
+    restart: always
+    env_file: {{ pyrigs_env_dir }}/pyrigs.env
+    ports:
+      - "{{ pyrigs_bind_address }}:{{ pyrigs_port }}:{{ pyrigs_container_port }}"
+    volumes:
+      - "{{ pyrigs_postgres_socket_dir }}:{{ pyrigs_postgres_socket_dir }}"
+    command:
+      - sh
+      - -c
+      - >-
+        {{ 'python manage.py migrate --noinput && ' if pyrigs_run_migrations | bool else '' }}exec
+        gunicorn --bind 0.0.0.0:{{ pyrigs_container_port }}
+        --workers {{ pyrigs_workers }} PyRIGS.wsgi
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import socket; socket.create_connection(('127.0.0.1', {{ pyrigs_container_port }}), 2).close()"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

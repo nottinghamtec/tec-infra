@@ -1,5 +1,9 @@
 ---
-pyrigs_image: ghcr.io/nottinghamtec/pyrigs:latest
+pyrigs_image_repository: ghcr.io/nottinghamtec/pyrigs
+# Tag deployed the first time only. After that the deployed tag is recorded in
+# <project dir>/deploy.env and changed with `pyrigs-deploy <tag>`.
+pyrigs_default_tag: latest
+pyrigs_project_dir: /opt/pyrigs
 pyrigs_container_name: pyrigs
 
 # The container's port is published on the host at this address; keep it on
@@ -23,6 +27,11 @@ pyrigs_secret_env: {}
 pyrigs_run_migrations: true
 
 pyrigs_env_dir: /etc/pyrigs
+
+# Public keys allowed to trigger deployments over SSH as pyrigs_deploy_user. Each
+# key can only run `pyrigs-deploy <tag>`. Leave empty to not create the user.
+pyrigs_deploy_user: deploy
+pyrigs_deploy_ssh_keys: []
 
 # Collected static files are copied out of the image to <root>/static, which
 # nginx serves directly (falling back to the app, which can also serve them).

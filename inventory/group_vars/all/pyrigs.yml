@@ -1,6 +1,10 @@
 ---
 pyrigs_port: 8000
 
+# Public keys that may trigger deployments (see README, "Automatic deployments").
+pyrigs_deploy_ssh_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBE93Q8sqC9rxTFXERAEsXFFPTeXx4nFy1RAOgFAxhtb pyrigs-github-actions
+
 pyrigs_env:
   DEBUG: "false"
   STAGING: "false"

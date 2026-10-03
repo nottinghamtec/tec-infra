@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Deploy a PyRIGS image tag. Managed by Ansible (roles/pyrigs).
+#
+# Usage: pyrigs-deploy [tag]
+#   With no tag, redeploys the tag recorded in the state file (initially "latest").
+#   Pulls the image, publishes its static files, recreates the container and
+#   waits for it to become healthy. If it doesn't, the previous tag is restored.
+#
+# Prints PYRIGS_CHANGED=true when the running container was replaced.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source /etc/pyrigs/deploy.conf   # IMAGE_REPO, PROJECT_DIR, STATIC_DIR, CONTAINER
+
+STATE_FILE="$PROJECT_DIR/deploy.env"
+compose() {
+    docker compose --project-name pyrigs -f "$PROJECT_DIR/compose.yml" \
+        --env-file "$STATE_FILE" "$@"
+}
+log() { echo "pyrigs-deploy: $*"; logger -t pyrigs-deploy -- "$*" || true; }
+
+# Only one deploy at a time.
+exec 9>/run/lock/pyrigs-deploy.lock
+flock -n 9 || { echo "pyrigs-deploy: another deploy is running" >&2; exit 1; }
+
+previous="$(sed -n 's/^PYRIGS_TAG=//p' "$STATE_FILE" 2>/dev/null | head -n1 || true)"
+previous="${previous:-latest}"
+tag="${1:-$previous}"
+
+# The tag may come from an SSH client, so only accept plain tag characters.
+if [[ ! "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+    echo "pyrigs-deploy: invalid tag" >&2
+    exit 2
+fi
+
+write_tag() {
+    printf 'PYRIGS_TAG=%s\n' "$1" > "$STATE_FILE.tmp"
+    mv "$STATE_FILE.tmp" "$STATE_FILE"
+}
+
+image="$IMAGE_REPO:$tag"
+log "deploying $image (previous: $previous)"
+
+docker pull --quiet "$image" > /dev/null
+new_id="$(docker image inspect --format '{{.Id}}' "$image")"
+running_id="$(docker inspect --format '{{.Image}}' "$CONTAINER" 2> /dev/null || true)"
+old_container="$(docker inspect --format '{{.Id}}' "$CONTAINER" 2> /dev/null || true)"
+
+# Copy the collected static files out of the image for nginx. Existing files are
+# kept, so pages loaded before the deploy can still fetch their old assets.
+if [[ "$new_id" != "$running_id" || ! -f "$STATIC_DIR/staticfiles.json" ]]; then
+    docker run --rm --user root --entrypoint sh -v "$STATIC_DIR:/out" "$image" \
+        -c 'cp -a /app/static/. /out/'
+fi
+
+write_tag "$tag"
+if ! compose up -d --remove-orphans --wait --wait-timeout 300; then
+    log "deploy of $tag failed, container logs follow"
+    docker logs --tail 50 "$CONTAINER" >&2 || true
+    if [[ "$previous" != "$tag" ]]; then
+        log "rolling back to $previous"
+        write_tag "$previous"
+        compose up -d --remove-orphans --wait --wait-timeout 300 || true
+    fi
+    exit 1
+fi
+
+new_container="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
+if [[ "$new_container" != "$old_container" ]]; then
+    log "deployed $tag"
+    echo "PYRIGS_CHANGED=true"
+else
+    log "$tag already deployed, nothing changed"
+fi

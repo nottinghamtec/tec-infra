@@ -34,83 +34,88 @@
     owner: root
     group: root
     mode: "0600"
-  register: pyrigs_env_file
   no_log: true
 
-- name: Pull the PyRIGS image
-  community.docker.docker_image:
-    name: "{{ pyrigs_image }}"
-    source: pull
-    force_source: true
-  register: pyrigs_image_pull
-
-- name: Create the static files directory
+- name: Create the project and static files directories
   ansible.builtin.file:
-    path: "{{ pyrigs_static_root }}/static"
+    path: "{{ item }}"
     state: directory
     owner: root
     group: root
     mode: "0755"
+  loop:
+    - "{{ pyrigs_project_dir }}"
+    - "{{ pyrigs_static_root }}/static"
 
-- name: Check whether static files have been published
-  ansible.builtin.stat:
-    path: "{{ pyrigs_static_root }}/static/staticfiles.json"
-  register: pyrigs_static_manifest
+- name: Write the deploy script configuration
+  ansible.builtin.template:
+    src: deploy.conf.j2
+    dest: "{{ pyrigs_env_dir }}/deploy.conf"
+    owner: root
+    group: root
+    mode: "0644"
 
-- name: Publish static files from the image
-  community.docker.docker_container:
-    name: "{{ pyrigs_container_name }}-static"
-    image: "{{ pyrigs_image }}"
-    user: root
-    command:
-      - sh
-      - -c
-      - find /out -mindepth 1 -delete && cp -a /app/static/. /out/
-    volumes:
-      - "{{ pyrigs_static_root }}/static:/out"
-    detach: false
-    cleanup: true
-    pull: never
-  changed_when: true
+- name: Write the compose file
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ pyrigs_project_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Record the initial image tag
+  ansible.builtin.copy:
+    content: "PYRIGS_TAG={{ pyrigs_default_tag }}\n"
+    dest: "{{ pyrigs_project_dir }}/deploy.env"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+
+- name: Install the deploy script
+  ansible.builtin.copy:
+    src: pyrigs-deploy
+    dest: /usr/local/sbin/pyrigs-deploy
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Deploy PyRIGS
+  ansible.builtin.command: /usr/local/sbin/pyrigs-deploy
+  register: pyrigs_deploy
+  changed_when: "'PYRIGS_CHANGED=true' in pyrigs_deploy.stdout"
+
+- name: Create the deploy user
+  ansible.builtin.user:
+    name: "{{ pyrigs_deploy_user }}"
+    system: true
+    shell: /bin/sh
+    password_lock: true
+    create_home: true
+    state: present
+  register: pyrigs_deploy_user_result
+  when: pyrigs_deploy_ssh_keys | length > 0
+
+- name: Authorise the deploy keys, restricted to the deploy script
+  ansible.posix.authorized_key:
+    user: "{{ pyrigs_deploy_user }}"
+    key: "{{ pyrigs_deploy_ssh_keys | join('\n') }}"
+    key_options: 'command="sudo /usr/local/sbin/pyrigs-deploy \"$SSH_ORIGINAL_COMMAND\"",restrict'
+    exclusive: true
+    state: present
   when:
-    - pyrigs_image_pull is changed or not pyrigs_static_manifest.stat.exists
-    - not (ansible_check_mode and pyrigs_env_file is changed)
+    - pyrigs_deploy_ssh_keys | length > 0
+    - not (ansible_check_mode and pyrigs_deploy_user_result is changed)
 
-- name: Run the PyRIGS container
-  community.docker.docker_container:
-    name: "{{ pyrigs_container_name }}"
-    image: "{{ pyrigs_image }}"
-    pull: never
-    state: started
-    restart_policy: always
-    published_ports:
-      - "{{ pyrigs_bind_address }}:{{ pyrigs_port }}:{{ pyrigs_container_port }}"
-    volumes:
-      - "{{ pyrigs_postgres_socket_dir }}:{{ pyrigs_postgres_socket_dir }}"
-    env_file: "{{ pyrigs_env_dir }}/pyrigs.env"
-    command:
-      - sh
-      - -c
-      - >-
-        {{ 'python manage.py migrate --noinput && ' if pyrigs_run_migrations | bool else '' }}exec
-        gunicorn --bind 0.0.0.0:{{ pyrigs_container_port }}
-        --workers {{ pyrigs_workers }} PyRIGS.wsgi
-    healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import socket; socket.create_connection(('127.0.0.1', {{ pyrigs_container_port }}), 2).close()"
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 120s
-    log_driver: json-file
-    log_options:
-      max-size: 10m
-      max-file: "3"
-  # In check mode the env file isn't written, so the container can't be evaluated.
-  when: not (ansible_check_mode and pyrigs_env_file is changed)
+- name: Allow the deploy user to run only the deploy script as root
+  ansible.builtin.copy:
+    content: "{{ pyrigs_deploy_user }} ALL=(root) NOPASSWD: /usr/local/sbin/pyrigs-deploy\n"
+    dest: /etc/sudoers.d/90-pyrigs-deploy
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  when: pyrigs_deploy_ssh_keys | length > 0
 
 - name: Install cron
   ansible.builtin.apt:
