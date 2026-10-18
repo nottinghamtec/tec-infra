@@ -9,6 +9,8 @@
       tags: [ssh]
     - role: unattended_upgrades
       tags: [unattended_upgrades]
+    - role: debug_utils
+      tags: [debug_utils]
     - role: docker
       tags: [docker]
     - role: postgres

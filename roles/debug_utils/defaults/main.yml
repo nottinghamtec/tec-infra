@@ -1,0 +1,6 @@
+---
+# Generic debugging and inspection utilities installed on every server.
+debug_utils_packages:
+  - wtmpdb
+  - emacs-nox
+  - htop

@@ -1,0 +1,6 @@
+---
+- name: Install debug utilities
+  ansible.builtin.apt:
+    name: "{{ debug_utils_packages }}"
+    state: present
+    cache_valid_time: 3600
