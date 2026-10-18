@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+[Timer]
+# An empty OnCalendar clears the packaged schedule before setting ours.
+OnCalendar=
+OnCalendar=*-*-* {{ unattended_upgrades_upgrade_time }}
+RandomizedDelaySec={{ unattended_upgrades_upgrade_random_delay }}

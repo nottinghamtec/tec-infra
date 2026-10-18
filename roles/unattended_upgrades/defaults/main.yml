@@ -1,8 +1,14 @@
 ---
 # Reboot automatically when an upgrade requires it (e.g. a new kernel).
 unattended_upgrades_automatic_reboot: true
-# Server local time (HH:MM) at which the reboot happens.
-unattended_upgrades_reboot_time: "03:00"
+# Server local time (HH:MM) at which the reboot happens. Keep this after the
+# upgrade window (upgrade time + random delay) so the upgrade finishes first.
+unattended_upgrades_reboot_time: "03:30"
+
+# Server local time (HH:MM) at which the daily upgrade run starts, and the
+# maximum random delay added to it (systemd time span).
+unattended_upgrades_upgrade_time: "02:00"
+unattended_upgrades_upgrade_random_delay: 30m
 
 # Extra apt origins to upgrade automatically, in Origins-Pattern syntax
 # (key=value pairs, comma separated).
