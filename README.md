@@ -9,16 +9,17 @@ Ansible configuration for TEC's servers. It currently manages one host,
 
 ## What gets configured
 
-| Role                  | Purpose                                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------------ |
-| `users`               | Local users with SSH key login only (passwords locked), optional passwordless sudo         |
-| `ssh`                 | Disables SSH password authentication via a drop-in in `/etc/ssh/sshd_config.d/`            |
-| `unattended_upgrades` | Automatic reboot at 03:00 (server time) and allows Docker's apt repo                       |
-| `docker`              | Docker Engine from Docker's official apt repository                                        |
-| `postgres`            | PostgreSQL, the `rigs` role and database, and password login over the local unix socket    |
-| `pyrigs`              | PyRIGS (`ghcr.io/nottinghamtec/pyrigs`) via compose, deploy script and user, cron jobs |
-| `nginx`               | nginx reverse proxy; serves `/static/` directly                                            |
-| `certbot`             | Requests the certificate (webroot), renews via `certbot.timer`, reloads nginx on renewal   |
+| Role                  | Purpose                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| `users`               | Local users with SSH key login only (passwords locked), optional passwordless sudo       |
+| `ssh`                 | Disables SSH password authentication via a drop-in in `/etc/ssh/sshd_config.d/`          |
+| `unattended_upgrades` | Upgrades at ~02:00, reboot at 03:30 (server time), allows Docker's apt repo             |
+| `debug_utils`         | Generic debug utilities: `wtmpdb`, `emacs-nox`, etc.                                     |
+| `docker`              | Docker Engine from Docker's official apt repository                                      |
+| `postgres`            | PostgreSQL, the `rigs` role and database, and password login over the local unix socket  |
+| `pyrigs`              | PyRIGS (`ghcr.io/nottinghamtec/pyrigs`) via compose, deploy script and user, cron jobs   |
+| `nginx`               | nginx reverse proxy; serves `/static/` directly                                          |
+| `certbot`             | Requests the certificate (webroot), renews via `certbot.timer`, reloads nginx on renewal |
 
 Roles run in the order above (see `playbooks/site.yml`). `users` runs before
 `ssh` on purpose, so keys exist before password login is disabled.
@@ -258,9 +259,9 @@ sudo -u postgres psql -d rigs
 
 ### Automatic updates
 
-`unattended-upgrades` installs security updates (and Docker's) daily and reboots
-at 03:00 server time (UTC) when an update requires it. The reboot is skipped if
-someone is logged in.
+`unattended-upgrades` installs security updates (and Docker's) daily from 02:00,
+with up to 30 minutes of random delay, and reboots at 03:30 server time (UTC)
+when an update requires it. The reboot is skipped if someone is logged in.
 
 ## License
 
