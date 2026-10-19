@@ -51,3 +51,8 @@ pyrigs_cron_jobs:
     minute: "0"
     hour: "8"
     command: python manage.py send_reminders
+  - name: pyrigs badges
+    tag: pyrigs-badges
+    minute: "0"
+    hour: "7-23"
+    command: python manage.py award_badges --quiet
