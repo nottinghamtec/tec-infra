@@ -12,9 +12,9 @@ pyrigs_bind_address: 127.0.0.1
 pyrigs_port: 8000
 pyrigs_container_port: 8000
 pyrigs_workers: 3
-# Threads per worker. Keep this at 1 for now: PDF generation (reportlab/z3c.rml) fails with KeyError on its fonts
-# when two requests render at once in the same process.
-pyrigs_threads: 1
+# Threads per worker, so a request blocked on SMTP or an outbound fetch doesn't stall a whole worker. Needs a PyRIGS
+# image with PyRIGS.pdf.render_rml: without its lock, concurrent PDF renders in one process fail with a font KeyError.
+pyrigs_threads: 4
 pyrigs_timeout: 60
 # Recycle workers periodically to cap memory growth; the jitter staggers the restarts.
 pyrigs_max_requests: 1000
