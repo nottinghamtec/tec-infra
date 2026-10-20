@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Remove old PyRIGS images. Managed by Ansible (roles/pyrigs).
+#
+# Usage: pyrigs-prune-images [--dry-run]
+#   Keeps the newest KEEP_IMAGES tags, "latest", the tag recorded in the deploy state file and
+#   any image a container (running or not) is using, so a rollback target is never removed.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "${PYRIGS_DEPLOY_CONF:-/etc/pyrigs/deploy.conf}"   # IMAGE_REPO, PROJECT_DIR, KEEP_IMAGES
+
+dry_run=false
+[[ "${1:-}" == "--dry-run" ]] && dry_run=true
+
+keep_newest="${KEEP_IMAGES:-5}"
+current="$(sed -n 's/^PYRIGS_TAG=//p' "$PROJECT_DIR/deploy.env" 2> /dev/null | head -n1 || true)"
+in_use="$(docker ps -a --format '{{.Image}}')"
+
+count=0
+# docker lists images newest first
+while read -r tag; do
+    [[ -z "$tag" || "$tag" == "<none>" ]] && continue
+    count=$((count + 1))
+    (( count <= keep_newest )) && continue
+    [[ "$tag" == "latest" || "$tag" == "$current" ]] && continue
+    if grep -qxF "$IMAGE_REPO:$tag" <<< "$in_use"; then
+        continue
+    fi
+    if $dry_run; then
+        echo "would remove $IMAGE_REPO:$tag"
+    else
+        echo "removing $IMAGE_REPO:$tag"
+        docker image rm "$IMAGE_REPO:$tag" > /dev/null || echo "could not remove $IMAGE_REPO:$tag" >&2
+    fi
+done < <(docker image ls "$IMAGE_REPO" --format '{{.Tag}}')
+
+if ! $dry_run; then
+    docker image prune --force > /dev/null
+fi

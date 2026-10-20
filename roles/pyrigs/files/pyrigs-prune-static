@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Remove static files no recent deploy has used. Managed by Ansible (roles/pyrigs).
+#
+# Usage: pyrigs-prune-static [--dry-run]
+#   Deploys keep every old static file so pages loaded before a deploy can still fetch their assets. Each deploy
+#   saves the manifest of the files it published in $PROJECT_DIR/manifests. A file is only removed when it appears in
+#   neither the current manifest nor any saved within the last STATIC_RETENTION_DAYS, and nothing is removed until
+#   at least that much manifest history exists.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "${PYRIGS_DEPLOY_CONF:-/etc/pyrigs/deploy.conf}"   # PROJECT_DIR, STATIC_DIR, STATIC_RETENTION_DAYS
+
+dry_run=false
+[[ "${1:-}" == "--dry-run" ]] && dry_run=true
+
+exec python3 - "$STATIC_DIR" "$PROJECT_DIR/manifests" "${STATIC_RETENTION_DAYS:-30}" "$dry_run" << 'PY'
+import json
+import os
+import sys
+import time
+
+static_dir, manifest_dir, days, dry_run = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4] == "true"
+now = time.time()
+cutoff = now - days * 86400
+
+
+def used_files(path):
+    with open(path) as f:
+        paths = json.load(f)["paths"]
+    return set(paths) | set(paths.values())
+
+
+current_manifest = os.path.join(static_dir, "staticfiles.json")
+try:
+    keep = used_files(current_manifest)
+except (OSError, ValueError, KeyError) as error:
+    sys.exit(f"cannot read the current manifest, removing nothing: {error}")
+if len(keep) < 10:
+    sys.exit("the current manifest looks too small, removing nothing")
+
+oldest = now
+for name in os.listdir(manifest_dir) if os.path.isdir(manifest_dir) else []:
+    try:
+        saved_at = int(name.split("-", 1)[0])
+    except ValueError:
+        continue
+    oldest = min(oldest, saved_at)
+    if saved_at >= cutoff:
+        try:
+            keep |= used_files(os.path.join(manifest_dir, name))
+        except (OSError, ValueError, KeyError):
+            sys.exit(f"cannot read saved manifest {name}, removing nothing")
+
+if oldest > cutoff:
+    print(f"only {(now - oldest) / 86400:.0f} days of manifest history, need {days}; removing nothing")
+    sys.exit(0)
+
+removed = 0
+for root, _dirs, files in os.walk(static_dir):
+    for name in files:
+        full = os.path.join(root, name)
+        rel = os.path.relpath(full, static_dir)
+        base = rel[:-3] if rel.endswith((".gz", ".br")) and rel[:-3] in keep else rel
+        if rel == "staticfiles.json" or base in keep:
+            continue
+        removed += 1
+        print(("would remove " if dry_run else "removing ") + rel)
+        if not dry_run:
+            os.remove(full)
+
+if not dry_run:
+    for root, dirs, files in os.walk(static_dir, topdown=False):
+        if root != static_dir and not os.listdir(root):
+            os.rmdir(root)
+
+print(f"{'would remove' if dry_run else 'removed'} {removed} files, kept {len(keep)} referenced paths")
+PY

@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source /etc/pyrigs/deploy.conf   # IMAGE_REPO, PROJECT_DIR, STATIC_DIR, CONTAINER
+source "${PYRIGS_DEPLOY_CONF:-/etc/pyrigs/deploy.conf}"   # IMAGE_REPO, PROJECT_DIR, STATIC_DIR, CONTAINER
 
 STATE_FILE="$PROJECT_DIR/deploy.env"
 compose() {
@@ -20,7 +20,7 @@ compose() {
 log() { echo "pyrigs-deploy: $*"; logger -t pyrigs-deploy -- "$*" || true; }
 
 # Only one deploy at a time.
-exec 9>/run/lock/pyrigs-deploy.lock
+exec 9>"${PYRIGS_LOCK:-/run/lock/pyrigs-deploy.lock}"
 flock -n 9 || { echo "pyrigs-deploy: another deploy is running" >&2; exit 1; }
 
 previous="$(sed -n 's/^PYRIGS_TAG=//p' "$STATE_FILE" 2>/dev/null | head -n1 || true)"
@@ -51,6 +51,9 @@ old_container="$(docker inspect --format '{{.Id}}' "$CONTAINER" 2> /dev/null || 
 if [[ "$new_id" != "$running_id" || ! -f "$STATIC_DIR/staticfiles.json" ]]; then
     docker run --rm --user root --entrypoint sh -v "$STATIC_DIR:/out" "$image" \
         -c 'cp -a /app/static/. /out/'
+    # Remember which files this deploy published, so pyrigs-prune-static knows what is still in use
+    mkdir -p "$PROJECT_DIR/manifests"
+    cp "$STATIC_DIR/staticfiles.json" "$PROJECT_DIR/manifests/$(date +%s)-$tag.json"
 fi
 
 write_tag "$tag"

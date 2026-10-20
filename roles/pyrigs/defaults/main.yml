@@ -63,3 +63,8 @@ pyrigs_cron_jobs:
     minute: "0"
     hour: "7-23"
     command: python manage.py award_badges --quiet
+
+# Housekeeping, run weekly: keep this many of the newest image tags (plus the deployed one and any in use), and
+# remove static files not used by a deploy in the last pyrigs_static_retention_days days.
+pyrigs_keep_images: 5
+pyrigs_static_retention_days: 30

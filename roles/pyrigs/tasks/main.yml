@@ -80,6 +80,17 @@
     group: root
     mode: "0750"
 
+- name: Install the housekeeping scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/sbin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - pyrigs-prune-images
+    - pyrigs-prune-static
+
 - name: Deploy PyRIGS
   ansible.builtin.command: /usr/local/sbin/pyrigs-deploy
   register: pyrigs_deploy
@@ -136,5 +147,29 @@
       | logger -t {{ item.tag }}
     state: "{{ item.state | default('present') }}"
   loop: "{{ pyrigs_cron_jobs }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Start recording static file manifests from the files in use now
+  ansible.builtin.shell:
+    cmd: >-
+      mkdir -p {{ pyrigs_project_dir }}/manifests &&
+      cp {{ pyrigs_static_root }}/static/staticfiles.json
+      {{ pyrigs_project_dir }}/manifests/$(date +%s)-seed.json
+    creates: "{{ pyrigs_project_dir }}/manifests/*.json"
+    removes: "{{ pyrigs_static_root }}/static/staticfiles.json"
+
+- name: Schedule weekly housekeeping
+  ansible.builtin.cron:
+    name: "{{ item.name }}"
+    cron_file: pyrigs-housekeeping
+    user: root
+    minute: "30"
+    hour: "{{ item.hour }}"
+    weekday: "0"
+    job: "/usr/local/sbin/{{ item.script }} 2>&1 | logger -t {{ item.script }}"
+  loop:
+    - { name: pyrigs prune images, script: pyrigs-prune-images, hour: "4" }
+    - { name: pyrigs prune static, script: pyrigs-prune-static, hour: "5" }
   loop_control:
     label: "{{ item.name }}"
