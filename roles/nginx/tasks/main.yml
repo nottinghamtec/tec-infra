@@ -45,6 +45,14 @@
         mode: "0644"
       notify: Reload nginx
 
+    - name: Write the page shown while the app is unavailable
+      ansible.builtin.template:
+        src: unavailable.html.j2
+        dest: /usr/share/nginx/html/unavailable.html
+        owner: root
+        group: root
+        mode: "0644"
+
     - name: Remove the default site
       ansible.builtin.file:
         path: /etc/nginx/sites-enabled/default
