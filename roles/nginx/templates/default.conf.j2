@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+# Anything that doesn't name one of our sites (scanners hitting the IP, stray DNS records) is dropped here instead
+# of being proxied to the app.
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    access_log off;
+    return 444;
+}
+
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name _;
+    access_log off;
+    ssl_reject_handshake on;
+}

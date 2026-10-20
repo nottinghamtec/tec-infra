@@ -36,6 +36,15 @@
         mode: "0644"
       notify: Reload nginx
 
+    - name: Write the catch-all server for unknown hostnames
+      ansible.builtin.template:
+        src: default.conf.j2
+        dest: /etc/nginx/conf.d/01-default.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload nginx
+
     - name: Remove the default site
       ansible.builtin.file:
         path: /etc/nginx/sites-enabled/default
