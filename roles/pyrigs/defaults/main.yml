@@ -12,6 +12,12 @@ pyrigs_bind_address: 127.0.0.1
 pyrigs_port: 8000
 pyrigs_container_port: 8000
 pyrigs_workers: 3
+# Threads per worker, so a request blocked on SMTP or an outbound fetch doesn't stall a whole worker.
+pyrigs_threads: 4
+pyrigs_timeout: 60
+# Recycle workers periodically to cap memory growth; the jitter staggers the restarts.
+pyrigs_max_requests: 1000
+pyrigs_max_requests_jitter: 100
 
 # PostgreSQL's unix socket directory, mounted into the container so the app can
 # reach the host database without it listening on any network.

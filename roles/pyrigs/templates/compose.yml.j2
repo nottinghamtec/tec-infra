@@ -16,7 +16,10 @@ services:
       - >-
         {{ 'python manage.py migrate --noinput && ' if pyrigs_run_migrations | bool else '' }}exec
         gunicorn --bind 0.0.0.0:{{ pyrigs_container_port }}
-        --workers {{ pyrigs_workers }} PyRIGS.wsgi
+        --workers {{ pyrigs_workers }} --threads {{ pyrigs_threads }}
+        --worker-tmp-dir /dev/shm --timeout {{ pyrigs_timeout }}
+        --max-requests {{ pyrigs_max_requests }} --max-requests-jitter {{ pyrigs_max_requests_jitter }}
+        PyRIGS.wsgi
     healthcheck:
       test:
         - CMD
