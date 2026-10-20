@@ -67,6 +67,13 @@ server {
     }
 
 {% endif %}
+{% if site.auth_paths is defined and site.upstream is defined %}
+    location ~ ^/({{ site.auth_paths | join('|') }})/$ {
+        limit_req zone=auth burst=10 nodelay;
+{{ location_body }}
+    }
+
+{% endif %}
     location / {
 {{ location_body }}
     }

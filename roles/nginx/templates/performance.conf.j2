@@ -29,3 +29,12 @@ open_file_cache max=1000 inactive=60s;
 open_file_cache_valid 60s;
 open_file_cache_min_uses 2;
 open_file_cache_errors on;
+
+# Limits sign-in and password-reset attempts per address. Only POSTs are counted (an empty key isn't limited), and the
+# rate is generous enough for a room of people behind one address.
+map $request_method $auth_limit_key {
+    POST $binary_remote_addr;
+    default "";
+}
+limit_req_zone $auth_limit_key zone=auth:10m rate=30r/m;
+limit_req_status 429;

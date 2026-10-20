@@ -5,6 +5,10 @@ nginx_sites:
       - rigs.nottinghamtec.co.uk
     upstream: http://127.0.0.1:8000
     static_root: "{{ pyrigs_static_root }}"
+    auth_paths:
+      - user/login
+      - user/password_reset
+      - user/password/reset
 
 certbot_email: it@nottinghamtec.co.uk
 
