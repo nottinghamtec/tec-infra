@@ -11,6 +11,8 @@
       tags: [unattended_upgrades]
     - role: debug_utils
       tags: [debug_utils]
+    - role: swap
+      tags: [swap]
     - role: docker
       tags: [docker]
     - role: postgres

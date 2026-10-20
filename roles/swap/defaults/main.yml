@@ -1,0 +1,5 @@
+---
+swap_file: /swapfile
+swap_size_mb: 2048
+# Low, so the kernel only swaps when memory is genuinely short rather than evicting page cache early.
+swap_swappiness: 10
