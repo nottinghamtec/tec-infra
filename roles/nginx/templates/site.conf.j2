@@ -66,8 +66,8 @@ server {
     location = /unavailable.html {
         root /usr/share/nginx/html;
         internal;
-        add_header Cache-Control "no-store";
-        add_header Retry-After 5;
+        add_header Cache-Control "no-store" always;
+        add_header Retry-After 5 always;
     }
 
 {% endif %}
