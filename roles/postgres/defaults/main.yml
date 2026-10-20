@@ -19,3 +19,12 @@ postgres_databases: []
 #   - database: app
 #     user: app
 postgres_local_socket_access: []
+
+# Settings written to a conf.d drop-in. Defaults suit a small host that also runs the app and nginx.
+# JIT compilation costs more than it saves on short OLTP queries, so it is off.
+postgres_settings:
+  jit: "off"
+  shared_buffers: 512MB
+  effective_cache_size: 2GB
+  work_mem: 8MB
+  random_page_cost: "1.1"
