@@ -13,13 +13,21 @@ Ansible configuration for TEC's servers. It currently manages one host,
 | --------------------- | ---------------------------------------------------------------------------------------- |
 | `users`               | Local users with SSH key login only (passwords locked), optional passwordless sudo       |
 | `ssh`                 | Disables SSH password authentication via a drop-in in `/etc/ssh/sshd_config.d/`          |
+| `fail2ban`            | Bans addresses that repeatedly fail SSH logins                                           |
 | `unattended_upgrades` | Upgrades at ~02:00, reboot at 03:30 (server time), allows Docker's apt repo             |
 | `debug_utils`         | Generic debug utilities: `wtmpdb`, `emacs-nox`, etc.                                     |
+| `swap`                | 2 GB swap file with `vm.swappiness=10`                                                   |
 | `docker`              | Docker Engine from Docker's official apt repository                                      |
 | `postgres`            | PostgreSQL, the `rigs` role and database, and password login over the local unix socket  |
 | `pyrigs`              | PyRIGS (`ghcr.io/nottinghamtec/pyrigs`) via compose, deploy script and user, cron jobs   |
 | `nginx`               | nginx reverse proxy; serves `/static/` directly                                          |
 | `certbot`             | Requests the certificate (webroot), renews via `certbot.timer`, reloads nginx on renewal |
+
+Housekeeping and safety nets in the `pyrigs` role: every deploy sends a request to the new container and rolls back
+if it doesn't answer, and each week `pyrigs-prune-images` removes old image tags (keeping the newest few, the deployed
+tag and anything in use) and `pyrigs-prune-static` removes static files that no deploy in the last 30 days used (the
+current files are never removed, and nothing is removed until 30 days of deploy manifests exist). Both accept
+`--dry-run`. `pg_stat_statements` is enabled in Postgres for query statistics.
 
 Roles run in the order above (see `playbooks/site.yml`). `users` runs before
 `ssh` on purpose, so keys exist before password login is disabled.
