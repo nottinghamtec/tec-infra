@@ -105,7 +105,7 @@
 - name: Create PostgreSQL extensions
   community.postgresql.postgresql_ext:
     name: "{{ item.1 }}"
-    db: "{{ item.0.name }}"
+    login_db: "{{ item.0.name }}"
     state: present
   become: true
   become_user: postgres
