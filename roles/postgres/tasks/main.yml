@@ -101,3 +101,15 @@
     name: postgresql
     state: restarted
   when: postgres_performance is changed  # noqa: no-handler
+
+- name: Create PostgreSQL extensions
+  community.postgresql.postgresql_ext:
+    name: "{{ item.1 }}"
+    db: "{{ item.0.name }}"
+    state: present
+  become: true
+  become_user: postgres
+  loop: "{{ postgres_databases | product(postgres_extensions) | list }}"
+  loop_control:
+    label: "{{ item.0.name }}: {{ item.1 }}"
+  when: not (ansible_check_mode and postgres_install is changed)
