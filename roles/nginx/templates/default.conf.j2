@@ -12,6 +12,9 @@ server {
 server {
     listen 443 ssl default_server;
     listen [::]:443 ssl default_server;
+    # reuseport is set once per port, here, for every HTTP/3 listener
+    listen 443 quic reuseport default_server;
+    listen [::]:443 quic reuseport default_server;
     server_name _;
     access_log off;
     ssl_reject_handshake on;

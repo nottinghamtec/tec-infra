@@ -44,12 +44,17 @@ server {
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
+    listen 443 quic;
+    listen [::]:443 quic;
     http2 on;
     server_name {{ site.server_names | join(' ') }};
 
     ssl_certificate /etc/letsencrypt/live/{{ site.name }}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{{ site.name }}/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Offer HTTP/3 to clients that support it; the rest keep using HTTP/2 over TCP
+    add_header Alt-Svc 'h3=":443"; ma=86400' always;
 
     client_max_body_size {{ site.client_max_body_size | default('20m') }};
 
