@@ -64,6 +64,11 @@ pyrigs_cron_jobs:
     hour: "7-23"
     command: python manage.py award_badges --quiet
 
+# After a deploy the new container must answer this path (sent with the Host and X-Forwarded-Proto the proxy would
+# add) or the deploy rolls back.
+pyrigs_smoke_path: /user/login/
+pyrigs_smoke_host: "{{ (pyrigs_env.DJANGO_ALLOWED_HOSTS | default('localhost')).split(',')[0] | trim }}"
+
 # Housekeeping, run weekly: keep this many of the newest image tags (plus the deployed one and any in use), and
 # remove static files not used by a deploy in the last pyrigs_static_retention_days days.
 pyrigs_keep_images: 5

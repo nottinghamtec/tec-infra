@@ -4,13 +4,13 @@
 # Usage: pyrigs-deploy [tag]
 #   With no tag, redeploys the tag recorded in the state file (initially "latest").
 #   Pulls the image, publishes its static files, recreates the container and
-#   waits for it to become healthy. If it doesn't, the previous tag is restored.
+#   waits for it to become healthy and answer a real request. If it doesn't, the previous tag is restored.
 #
 # Prints PYRIGS_CHANGED=true when the running container was replaced.
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "${PYRIGS_DEPLOY_CONF:-/etc/pyrigs/deploy.conf}"   # IMAGE_REPO, PROJECT_DIR, STATIC_DIR, CONTAINER
+source "${PYRIGS_DEPLOY_CONF:-/etc/pyrigs/deploy.conf}"   # IMAGE_REPO, PROJECT_DIR, STATIC_DIR, CONTAINER, SMOKE_*
 
 STATE_FILE="$PROJECT_DIR/deploy.env"
 compose() {
@@ -56,9 +56,22 @@ if [[ "$new_id" != "$running_id" || ! -f "$STATIC_DIR/staticfiles.json" ]]; then
     cp "$STATIC_DIR/staticfiles.json" "$PROJECT_DIR/manifests/$(date +%s)-$tag.json"
 fi
 
-write_tag "$tag"
-if ! compose up -d --remove-orphans --wait --wait-timeout 300; then
-    log "deploy of $tag failed, container logs follow"
+# The app answers a real request, not just a port: the sign-in page exercises templates, the database and static files.
+smoke_test() {
+    [[ -n "${SMOKE_URL:-}" ]] || return 0
+    local attempt
+    for attempt in 1 2 3 4 5; do
+        if curl --silent --fail --output /dev/null --max-time 10 \
+            -H "Host: ${SMOKE_HOST:-localhost}" -H 'X-Forwarded-Proto: https' "$SMOKE_URL"; then
+            return 0
+        fi
+        sleep 3
+    done
+    return 1
+}
+
+rollback() {
+    log "deploy of $tag failed: $1, container logs follow"
     docker logs --tail 50 "$CONTAINER" >&2 || true
     if [[ "$previous" != "$tag" ]]; then
         log "rolling back to $previous"
@@ -66,7 +79,11 @@ if ! compose up -d --remove-orphans --wait --wait-timeout 300; then
         compose up -d --remove-orphans --wait --wait-timeout 300 || true
     fi
     exit 1
-fi
+}
+
+write_tag "$tag"
+compose up -d --remove-orphans --wait --wait-timeout 300 || rollback "the container did not become healthy"
+smoke_test || rollback "the smoke test request to ${SMOKE_URL:-} failed"
 
 new_container="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
 if [[ "$new_container" != "$old_container" ]]; then
