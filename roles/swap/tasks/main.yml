@@ -1,0 +1,44 @@
+---
+- name: Create the swap file
+  ansible.builtin.command: "fallocate -l {{ swap_size_mb }}M {{ swap_file }}"
+  args:
+    creates: "{{ swap_file }}"
+
+- name: Restrict the swap file to root
+  ansible.builtin.file:
+    path: "{{ swap_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: not ansible_check_mode
+
+- name: Format the swap file
+  ansible.builtin.command: "mkswap {{ swap_file }}"
+  register: swap_format
+  changed_when: swap_format.rc == 0
+  when:
+    - not ansible_check_mode
+    - ansible_facts.swaptotal_mb == 0
+
+- name: Enable the swap file
+  ansible.builtin.command: "swapon {{ swap_file }}"
+  changed_when: true
+  when:
+    - not ansible_check_mode
+    - ansible_facts.swaptotal_mb == 0
+
+- name: Enable the swap file at boot
+  ansible.posix.mount:
+    src: "{{ swap_file }}"
+    path: none
+    fstype: swap
+    opts: sw
+    state: present
+
+- name: Set swappiness
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: "{{ swap_swappiness }}"
+    sysctl_file: /etc/sysctl.d/90-swap.conf
+    state: present
+    reload: true

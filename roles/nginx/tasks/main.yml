@@ -7,6 +7,15 @@
   register: nginx_install
 
 # In check mode nginx isn't installed yet, so its paths and service don't exist.
+- name: Install nginx brotli modules
+  ansible.builtin.apt:
+    name:
+      - libnginx-mod-http-brotli-filter
+      - libnginx-mod-http-brotli-static
+    state: present
+    cache_valid_time: 3600
+  notify: Restart nginx
+
 - name: Configure nginx
   when: not (ansible_check_mode and nginx_install is changed)
   block:
@@ -17,6 +26,32 @@
         owner: root
         group: root
         mode: "0755"
+
+    - name: Write shared compression and TLS settings
+      ansible.builtin.template:
+        src: performance.conf.j2
+        dest: /etc/nginx/conf.d/00-performance.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload nginx
+
+    - name: Write the catch-all server for unknown hostnames
+      ansible.builtin.template:
+        src: default.conf.j2
+        dest: /etc/nginx/conf.d/01-default.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload nginx
+
+    - name: Write the page shown while the app is unavailable
+      ansible.builtin.template:
+        src: unavailable.html.j2
+        dest: /usr/share/nginx/html/unavailable.html
+        owner: root
+        group: root
+        mode: "0644"
 
     - name: Remove the default site
       ansible.builtin.file:

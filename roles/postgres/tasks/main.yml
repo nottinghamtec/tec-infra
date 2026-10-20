@@ -73,3 +73,43 @@
     name: postgresql
     state: reloaded
   when: postgres_hba_rules is changed  # noqa: no-handler
+
+- name: Locate the PostgreSQL configuration directory
+  community.postgresql.postgresql_query:
+    query: SHOW config_file
+    login_db: postgres
+  become: true
+  become_user: postgres
+  register: postgres_config_file
+  changed_when: false
+  when: not (ansible_check_mode and postgres_install is changed)
+
+- name: Write performance settings
+  ansible.builtin.template:
+    src: performance.conf.j2
+    dest: "{{ postgres_config_file.query_result[0].config_file | dirname }}/conf.d/10-performance.conf"
+    owner: postgres
+    group: postgres
+    mode: "0644"
+  register: postgres_performance
+  when:
+    - postgres_settings | length > 0
+    - not (ansible_check_mode and postgres_install is changed)
+
+- name: Restart PostgreSQL to apply performance settings
+  ansible.builtin.service:
+    name: postgresql
+    state: restarted
+  when: postgres_performance is changed  # noqa: no-handler
+
+- name: Create PostgreSQL extensions
+  community.postgresql.postgresql_ext:
+    name: "{{ item.1 }}"
+    login_db: "{{ item.0.name }}"
+    state: present
+  become: true
+  become_user: postgres
+  loop: "{{ postgres_databases | product(postgres_extensions) | list }}"
+  loop_control:
+    label: "{{ item.0.name }}: {{ item.1 }}"
+  when: not (ansible_check_mode and postgres_install is changed)

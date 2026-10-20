@@ -7,5 +7,6 @@ nginx_acme_webroot: /var/www/certbot
 #     server_names: [example.org]
 #     upstream: http://127.0.0.1:8080 # optional, proxied when set (else 404)
 #     static_root: /var/www/app       # optional, serves <root>/static/ at /static/
+#     auth_paths: [user/login]        # optional, POSTs to these paths are rate limited per address
 # A site gets HTTPS once /etc/letsencrypt/live/<name>/ exists.
 nginx_sites: []

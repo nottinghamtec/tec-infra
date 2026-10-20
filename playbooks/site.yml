@@ -7,10 +7,14 @@
       tags: [users]
     - role: ssh
       tags: [ssh]
+    - role: fail2ban
+      tags: [fail2ban]
     - role: unattended_upgrades
       tags: [unattended_upgrades]
     - role: debug_utils
       tags: [debug_utils]
+    - role: swap
+      tags: [swap]
     - role: docker
       tags: [docker]
     - role: postgres

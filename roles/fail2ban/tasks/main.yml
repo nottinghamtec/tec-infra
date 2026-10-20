@@ -1,0 +1,24 @@
+---
+- name: Install fail2ban
+  ansible.builtin.apt:
+    name: fail2ban
+    state: present
+    cache_valid_time: 3600
+  register: fail2ban_install
+
+- name: Configure the sshd jail
+  ansible.builtin.template:
+    src: sshd.local.j2
+    dest: /etc/fail2ban/jail.d/sshd.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Enable and start fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+  # In check mode the package isn't installed yet, so the service doesn't exist.
+  when: not (ansible_check_mode and fail2ban_install is changed)

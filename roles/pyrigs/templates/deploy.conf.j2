@@ -3,3 +3,8 @@ IMAGE_REPO={{ pyrigs_image_repository }}
 PROJECT_DIR={{ pyrigs_project_dir }}
 STATIC_DIR={{ pyrigs_static_root }}/static
 CONTAINER={{ pyrigs_container_name }}
+KEEP_IMAGES={{ pyrigs_keep_images }}
+STATIC_RETENTION_DAYS={{ pyrigs_static_retention_days }}
+# The deploy script requests this from the new container, and rolls back if it doesn't answer 2xx/3xx
+SMOKE_URL=http://{{ pyrigs_bind_address }}:{{ pyrigs_port }}{{ pyrigs_smoke_path }}
+SMOKE_HOST={{ pyrigs_smoke_host }}
