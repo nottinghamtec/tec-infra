@@ -24,6 +24,7 @@ ssl_ecdh_curve X25519:prime256v1:secp384r1;
 ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
 ssl_prefer_server_ciphers off;
 
+# Keeps recently used static files' descriptors and metadata around between requests
 open_file_cache max=1000 inactive=60s;
 open_file_cache_valid 60s;
 open_file_cache_min_uses 2;
