@@ -51,7 +51,7 @@ pyrigs_cron_jobs:
     tag: pyrigs-cleanup
     minute: "0"
     hour: "0"
-    command: python manage.py cleanupregistration && python manage.py usercleanup
+    command: python manage.py cleanupregistration && python manage.py usercleanup && python manage.py clearsessions
   - name: pyrigs reminders
     tag: pyrigs-reminders
     minute: "0"
