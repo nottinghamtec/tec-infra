@@ -5,6 +5,7 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name _;
+    server_tokens off;
     access_log off;
     return 444;
 }
@@ -16,6 +17,7 @@ server {
     listen 443 quic reuseport default_server;
     listen [::]:443 quic reuseport default_server;
     server_name _;
+    server_tokens off;
     access_log off;
     ssl_reject_handshake on;
 }

@@ -1,5 +1,5 @@
 # {{ ansible_managed }}
-gzip on;
+# gzip itself is switched on in nginx.conf; this adds what it leaves out
 gzip_vary on;
 gzip_proxied any;
 gzip_comp_level 5;
@@ -17,12 +17,9 @@ ssl_session_cache shared:SSL:10m;
 ssl_session_timeout 1d;
 ssl_session_tickets off;
 
-server_tokens off;
-
-# Mozilla "intermediate" TLS settings
+# Mozilla "intermediate" TLS settings (protocols and ssl_prefer_server_ciphers are already set in nginx.conf)
 ssl_ecdh_curve X25519:prime256v1:secp384r1;
 ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
-ssl_prefer_server_ciphers off;
 
 # Keeps recently used static files' descriptors and metadata around between requests
 open_file_cache max=1000 inactive=60s;

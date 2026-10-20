@@ -26,6 +26,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name {{ site.server_names | join(' ') }};
+    server_tokens off;
 
     location /.well-known/acme-challenge/ {
         root {{ nginx_acme_webroot }};
@@ -48,6 +49,7 @@ server {
     listen [::]:443 quic;
     http2 on;
     server_name {{ site.server_names | join(' ') }};
+    server_tokens off;
 
     ssl_certificate /etc/letsencrypt/live/{{ site.name }}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{{ site.name }}/privkey.pem;
