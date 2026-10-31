@@ -243,11 +243,13 @@ the journal. Times are server time (UTC).
 | --------- | --------------- | -------------------------------------------------------- |
 | Cleanup   | daily at 00:00  | `manage.py cleanupregistration` then `manage.py usercleanup` |
 | Reminders | daily at 08:00  | `manage.py send_reminders`                               |
+| Check-out nags | daily at 17:00 | `manage.py send_checkout_nags`                      |
 | Badges    | hourly, 07:00–23:00 | `manage.py award_badges --quiet`                     |
 
 ```bash
 journalctl -t pyrigs-cleanup
 journalctl -t pyrigs-reminders
+journalctl -t pyrigs-checkout-nags
 journalctl -t pyrigs-badges
 ```
 

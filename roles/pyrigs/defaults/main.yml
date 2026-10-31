@@ -58,6 +58,11 @@ pyrigs_cron_jobs:
     minute: "0"
     hour: "8"
     command: python manage.py send_reminders
+  - name: pyrigs checkout nags
+    tag: pyrigs-checkout-nags
+    minute: "0"
+    hour: "17"
+    command: python manage.py send_checkout_nags
   - name: pyrigs badges
     tag: pyrigs-badges
     minute: "0"
