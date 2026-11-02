@@ -1,8 +1,9 @@
 # tec-infra
 
-Ansible configuration for TEC's servers. It currently manages one host,
+Ansible configuration for TEC's servers. It currently manages two hosts,
 `tec-rigs`, which runs [PyRIGS](https://github.com/NottinghamTEC/PyRIGS)
-(`rigs.nottinghamtec.co.uk`) behind nginx with a Let's Encrypt certificate.
+(`rigs.nottinghamtec.co.uk`) and `techost` (a general purpose host of
+various services).
 
 > This repository is **public**. Never commit plaintext secrets: anything
 > sensitive goes in the Ansible Vault file (see [Secrets](#secrets)).
