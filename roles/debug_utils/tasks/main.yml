@@ -1,6 +1,17 @@
 ---
+# Without this, emacs-nox pulls in mailutils and, through it, postfix.
 - name: Install debug utilities
   ansible.builtin.apt:
     name: "{{ debug_utils_packages }}"
     state: present
+    install_recommends: false
     cache_valid_time: 3600
+
+- name: Remove the mail packages emacs-nox used to pull in
+  ansible.builtin.apt:
+    name:
+      - postfix
+      - mailutils
+    state: absent
+    purge: true
+    autoremove: true
