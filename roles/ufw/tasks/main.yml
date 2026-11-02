@@ -1,0 +1,34 @@
+---
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+    cache_valid_time: 3600
+  register: ufw_install
+
+# Rules go in before ufw is enabled so SSH is never cut off.
+- name: Allow configured ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: "{{ item.proto | default('tcp') }}"
+    from_ip: "{{ item.from_ip | default('any') }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ ufw_allowed_ports + ufw_extra_rules }}"
+  loop_control:
+    label: "{{ item.port }}/{{ item.proto | default('tcp') }}"
+  when: not (ansible_check_mode and ufw_install is changed)
+
+- name: Set default policies
+  community.general.ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: "{{ ufw_default_incoming }}" }
+    - { direction: outgoing, policy: "{{ ufw_default_outgoing }}" }
+  when: not (ansible_check_mode and ufw_install is changed)
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled
+  when: not (ansible_check_mode and ufw_install is changed)

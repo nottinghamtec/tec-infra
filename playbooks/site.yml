@@ -9,6 +9,8 @@
       tags: [ssh]
     - role: fail2ban
       tags: [fail2ban]
+    - role: ufw
+      tags: [ufw]
     - role: unattended_upgrades
       tags: [unattended_upgrades]
     - role: debug_utils

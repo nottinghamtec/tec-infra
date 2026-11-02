@@ -1,0 +1,14 @@
+---
+# Ports opened to the world. Override per host (host_vars) or group to change
+# the whole list, for example to drop 80/443 on a host that doesn't serve web.
+ufw_allowed_ports:
+  - { port: 22, proto: tcp, comment: SSH }
+  - { port: 80, proto: tcp, comment: HTTP }
+  - { port: 443, proto: tcp, comment: HTTPS }
+
+# Additional rules on top of ufw_allowed_ports. Each entry takes port, proto,
+# comment and an optional from_ip to restrict the source address.
+ufw_extra_rules: []
+
+ufw_default_incoming: deny
+ufw_default_outgoing: allow

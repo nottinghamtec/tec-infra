@@ -14,6 +14,7 @@ Ansible configuration for TEC's servers. It currently manages one host,
 | `users`               | Local users with SSH key login only (passwords locked), optional passwordless sudo       |
 | `ssh`                 | Disables SSH password authentication via a drop-in in `/etc/ssh/sshd_config.d/`          |
 | `fail2ban`            | Bans addresses that repeatedly fail SSH logins                                           |
+| `ufw`                 | Firewall: denies incoming traffic except ports 22, 80 and 443 (configurable per host)    |
 | `unattended_upgrades` | Upgrades at ~02:00, reboot at 03:30 (server time), allows Docker's apt repo             |
 | `debug_utils`         | Generic debug utilities: `wtmpdb`, `emacs-nox`, etc.                                     |
 | `swap`                | 2 GB swap file with `vm.swappiness=10`                                                   |
