@@ -1,0 +1,57 @@
+---
+# Copies each certificate the first time, together with its renewal configuration, so it keeps renewing from here.
+- name: Check which certificates exist in the old certbot directory
+  ansible.builtin.stat:
+    path: "{{ ingress_import_from }}/live/{{ item.name }}"
+  loop: "{{ ingress_cert_targets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ingress_import_sources
+
+- name: Check for the ACME account
+  ansible.builtin.stat:
+    path: "{{ ingress_import_from }}/accounts"
+  register: ingress_import_accounts
+
+- name: Copy the ACME account
+  ansible.builtin.command:
+    cmd: "cp -a {{ ingress_import_from }}/accounts {{ ingress_dir }}/letsencrypt/"
+    creates: "{{ ingress_dir }}/letsencrypt/accounts"
+  when: ingress_import_accounts.stat.exists
+
+- name: Copy the certificates
+  ansible.builtin.command:
+    cmd: >-
+      sh -c 'cp -a {{ ingress_import_from }}/archive/{{ item.item.name }} {{ ingress_dir }}/letsencrypt/archive/ &&
+      cp -a {{ ingress_import_from }}/live/{{ item.item.name }} {{ ingress_dir }}/letsencrypt/live/ &&
+      cp -a {{ ingress_import_from }}/renewal/{{ item.item.name }}.conf {{ ingress_dir }}/letsencrypt/renewal/'
+    creates: "{{ ingress_dir }}/letsencrypt/live/{{ item.item.name }}"
+  loop: "{{ ingress_import_sources.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: item.stat.exists
+
+# The old certbot ran inside nginx-proxy-manager, with its own webroot and log directory.
+- name: Find the copied renewal configurations
+  ansible.builtin.find:
+    paths: "{{ ingress_dir }}/letsencrypt/renewal"
+    patterns: "*.conf"
+  register: ingress_renewal_confs
+
+- name: Point renewals at this webroot
+  ansible.builtin.replace:
+    path: "{{ item.path }}"
+    regexp: /data/letsencrypt-acme-challenge
+    replace: /var/www/certbot
+  loop: "{{ ingress_renewal_confs.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+
+- name: Point renewals at this log directory
+  ansible.builtin.replace:
+    path: "{{ item.path }}"
+    regexp: /data/logs
+    replace: /var/log/letsencrypt
+  loop: "{{ ingress_renewal_confs.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"

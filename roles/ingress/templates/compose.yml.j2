@@ -1,0 +1,33 @@
+# {{ ansible_managed }}
+name: ingress
+services:
+  nginx:
+    image: "{{ ingress_nginx_image }}"
+    container_name: {{ ingress_container_name }}
+    restart: unless-stopped
+    ports:
+      - "{{ ingress_http_port }}:80"
+      - "{{ ingress_https_port }}:443"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d:ro
+      - ./snippets:/etc/nginx/snippets:ro
+      - ./htpasswd:/etc/nginx/htpasswd:ro
+      - ./letsencrypt:/etc/letsencrypt:ro
+      - ./webroot:/var/www/certbot:ro
+    networks:
+      {{ ingress_network }}:
+        # Containers reach each other through the proxy by the public names.
+        aliases:
+{% for name in ingress_hostnames %}
+          - {{ name }}
+{% endfor %}
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  {{ ingress_network }}:
+    name: {{ ingress_network }}
+    external: true

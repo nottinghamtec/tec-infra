@@ -22,6 +22,7 @@ Ansible configuration for TEC's servers. It currently manages one host,
 | `pyrigs`              | PyRIGS (`ghcr.io/nottinghamtec/pyrigs`) via compose, deploy script and user, cron jobs   |
 | `nginx`               | nginx reverse proxy; serves `/static/` directly                                          |
 | `certbot`             | Requests the certificate (webroot), renews via `certbot.timer`, reloads nginx on renewal |
+| `ingress`             | nginx and certbot containers in `/root/ingress` on `techost`: reverse proxy, redirects and certificates for its containers |
 
 Housekeeping and safety nets in the `pyrigs` role: every deploy sends a request to the new container and rolls back
 if it doesn't answer, and each week `pyrigs-prune-images` removes old image tags (keeping the newest few, the deployed
@@ -278,3 +279,13 @@ when an update requires it. The reboot is skipped if someone is logged in.
 ## License
 
 [MIT](LICENSE)
+
+## Reverse proxy (`techost`)
+
+The `ingress` role runs nginx and certbot as containers from `/root/ingress` on `techost`. Sites and redirects are listed in `inventory/group_vars/all/ingress.yml` (`ingress_sites`,
+`ingress_redirects`). nginx joins the `proxy` docker network and forwards to the other containers by name, looking the
+names up per request so a recreated container is picked up. It also answers to every public hostname on that network
+(network aliases), so containers can call each other through the proxy by public name.
+
+Certificates live in `/root/ingress/letsencrypt` and are requested with certbot (webroot) when a site has none. Certbot renews from cron (03:17 and 15:17, `/etc/cron.d/ingress-renew`) and reloads
+nginx. A site without a certificate is served over plain HTTP until one has been issued.

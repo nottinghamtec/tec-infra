@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  author: Joe Banks
+  description: Reverse proxy for the containers on this host (nginx and certbot in containers), replacing nginx-proxy-manager
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions: [all]
+  galaxy_tags: [docker, nginx, letsencrypt]
+dependencies: []

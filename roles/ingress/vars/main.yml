@@ -1,0 +1,2 @@
+---
+ingress_hostnames: "{{ (ingress_sites + ingress_redirects) | map(attribute='domains') | flatten | unique }}"

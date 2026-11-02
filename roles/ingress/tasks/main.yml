@@ -1,0 +1,112 @@
+---
+- name: Install cron
+  ansible.builtin.apt:
+    name: cron
+    state: present
+    cache_valid_time: 3600
+
+- name: Create the project directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ ingress_dir }}"
+    - "{{ ingress_dir }}/conf.d"
+    - "{{ ingress_dir }}/snippets"
+    - "{{ ingress_dir }}/webroot"
+    - "{{ ingress_dir }}/letsencrypt"
+    - "{{ ingress_dir }}/letsencrypt/archive"
+    - "{{ ingress_dir }}/letsencrypt/live"
+    - "{{ ingress_dir }}/letsencrypt/renewal"
+
+- name: Install the nginx snippets
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ ingress_dir }}/snippets/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - acme-challenge.conf
+    - block-exploits.conf
+    - proxy.conf
+    - ssl.conf
+
+# Only password hashes are stored here.
+- name: Write the basic-auth users
+  ansible.builtin.copy:
+    content: "{{ ingress_htpasswd }}\n"
+    dest: "{{ ingress_dir }}/htpasswd"
+    owner: root
+    group: root
+    mode: "0644"
+  no_log: true
+
+- name: List the certificates needed
+  ansible.builtin.set_fact:
+    ingress_cert_targets: >-
+      {{ ingress_cert_targets | default([])
+         + [{'name': item.cert_name | default(item.domains[0]), 'domains': item.domains}] }}
+  loop: "{{ ingress_sites + ingress_redirects }}"
+  loop_control:
+    label: "{{ item.domains | join(', ') }}"
+
+- name: Import existing certbot certificates
+  ansible.builtin.include_tasks: import.yml
+  when: ingress_import_from | length > 0
+
+- name: Write the compose file
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ ingress_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: ingress_compose
+
+- name: Write the nginx configuration
+  ansible.builtin.include_tasks: render.yml
+
+- name: Start nginx
+  community.docker.docker_compose_v2:
+    project_src: "{{ ingress_dir }}"
+    state: present
+    pull: missing
+  # In check mode the compose file may not exist yet.
+  when: not (ansible_check_mode and ingress_compose is changed)
+
+- name: Request missing certificates
+  ansible.builtin.command:
+    argv: >-
+      {{ ['docker', 'run', '--rm',
+          '-v', ingress_dir ~ '/letsencrypt:/etc/letsencrypt',
+          '-v', ingress_dir ~ '/webroot:/var/www/certbot',
+          ingress_certbot_image,
+          'certonly', '--webroot', '-w', '/var/www/certbot', '--non-interactive', '--agree-tos',
+          '--email', ingress_certbot_email, '--cert-name', item.name]
+         + (item.domains | product(['-d']) | map('reverse') | flatten | list) }}
+  loop: "{{ ingress_cert_targets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ingress_issued
+  changed_when: true
+  when: not ingress_certs_present[item.name]
+
+- name: Enable HTTPS for the new certificates
+  ansible.builtin.include_tasks: render.yml
+  when: ingress_issued is changed  # noqa: no-handler
+
+- name: Renew certificates
+  ansible.builtin.cron:
+    name: renew certificates
+    cron_file: ingress-renew
+    user: root
+    minute: "17"
+    hour: "3,15"
+    job: >-
+      docker run --rm -v {{ ingress_dir }}/letsencrypt:/etc/letsencrypt -v {{ ingress_dir }}/webroot:/var/www/certbot
+      {{ ingress_certbot_image }} renew --quiet &&
+      docker exec {{ ingress_container_name }} nginx -s reload 2>&1 | logger -t ingress-renew

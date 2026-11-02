@@ -1,0 +1,47 @@
+---
+- name: Check which certificates exist
+  ansible.builtin.stat:
+    path: "{{ ingress_dir }}/letsencrypt/live/{{ item.name }}/fullchain.pem"
+  loop: "{{ ingress_cert_targets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ingress_cert_stats
+
+- name: Record which certificates exist
+  ansible.builtin.set_fact:
+    ingress_certs_present: >-
+      {{ dict(ingress_cert_stats.results | map(attribute='item.name')
+              | zip(ingress_cert_stats.results | map(attribute='stat.exists'))) }}
+
+- name: Write the common nginx settings
+  ansible.builtin.template:
+    src: 00-common.conf.j2
+    dest: "{{ ingress_dir }}/conf.d/00-common.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  register: ingress_conf_common
+
+- name: Write the site configuration
+  ansible.builtin.template:
+    src: 10-sites.conf.j2
+    dest: "{{ ingress_dir }}/conf.d/10-sites.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  register: ingress_conf_sites
+
+- name: Look for the running proxy
+  community.docker.docker_container_info:
+    name: "{{ ingress_container_name }}"
+  register: ingress_nginx_info
+
+- name: Test and reload the configuration
+  ansible.builtin.shell:
+    cmd: "docker exec {{ ingress_container_name }} nginx -t && docker exec {{ ingress_container_name }} nginx -s reload"
+  changed_when: true
+  when:
+    - ingress_nginx_info.exists
+    - ingress_nginx_info.container.State.Running | default(false)
+    - ingress_conf_common is changed or ingress_conf_sites is changed
+    - not ansible_check_mode

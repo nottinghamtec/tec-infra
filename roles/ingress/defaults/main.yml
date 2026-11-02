@@ -1,0 +1,49 @@
+---
+# Compose project directory, in root's home directory.
+ingress_dir: /root/ingress
+ingress_nginx_image: nginx:stable
+ingress_certbot_image: certbot/certbot:latest
+ingress_container_name: nginx
+
+# Host ports. Use other ports (for example 8080 and 8443) to try the proxy out while something else still holds 80/443.
+ingress_http_port: 80
+ingress_https_port: 443
+
+# Docker network shared with the containers being proxied. Upstreams are reached by container name on it, and the
+# proxy answers to the public hostnames on it too, so containers can reach each other through the proxy by those names.
+ingress_network: proxy
+
+# Contact address for new Let's Encrypt certificates (requesting one agrees to the subscriber agreement).
+ingress_certbot_email: it@nottinghamtec.co.uk
+
+# Existing certbot directory to copy certificates and the ACME account from, the first time each certificate is used
+# (nginx-proxy-manager's, mounted at /etc/letsencrypt in its container). Empty to disable.
+ingress_import_from: /var/letsencrypt
+
+# Where unknown hostnames on port 80 are sent.
+ingress_default_redirect: https://www.nottinghamtec.co.uk
+
+# Basic-auth users (htpasswd lines) for sites with basic_auth: true.
+ingress_htpasswd: ""
+
+# Proxied sites. Each entry:
+#   - name: wiki                      # label only
+#     domains: [wiki.example.org]
+#     cert_name: wiki.example.org     # certbot certificate name, default is the first domain
+#     upstream: http://wiki:80        # container name (on the shared network) and port
+#     force_ssl: true                 # redirect HTTP to HTTPS (default true)
+#     websocket: false                # pass Upgrade headers through
+#     basic_auth: false               # require a login from ingress_htpasswd
+#     block_exploits: false           # reject common probing query strings
+#     extra_config: ""                # raw nginx directives added to the server block
+# A site without a certificate is served over HTTP until one has been issued (a certificate is requested for it
+# automatically, so its domain must already point at this host).
+ingress_sites: []
+
+# Redirected hostnames. Each entry:
+#   - domains: [example.org]
+#     cert_name: example.org          # default is the first domain
+#     target: https://www.example.org
+#     code: 301
+#     preserve_path: true             # append the request URI to the target
+ingress_redirects: []

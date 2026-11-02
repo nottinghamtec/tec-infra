@@ -1,0 +1,47 @@
+# {{ ansible_managed }}
+name: bookstack
+services:
+  bookstack:
+    image: "{{ bookstack_image }}"
+    container_name: bookstack
+    restart: unless-stopped
+    environment:
+{% for key, value in bookstack_env.items() %}
+      {{ key }}: {{ value | to_json }}
+{% endfor %}
+      DB_PASSWORD: ${BOOKSTACK_DB_PASSWORD}
+      APP_KEY: ${BOOKSTACK_APP_KEY}
+      OIDC_CLIENT_SECRET: ${BOOKSTACK_OIDC_CLIENT_SECRET}
+{% if bookstack_mail_host | length > 0 %}
+      MAIL_PASSWORD: ${BOOKSTACK_MAIL_PASSWORD}
+{% endif %}
+    volumes:
+      - ./data:/config
+    networks:
+      - db
+      - proxy
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  distrust:
+    image: "{{ bookstack_distrust_image }}"
+    container_name: distrust
+    restart: unless-stopped
+    volumes:
+      - ./distrust.yml:/etc/distrust/distrust.yml:ro
+    networks:
+      - proxy
+    logging: *logging
+
+networks:
+  # The existing MariaDB container (`database`) lives on this network.
+  db:
+    name: db
+    external: true
+  # Shared with the ingress proxy, which forwards to the containers by name.
+  proxy:
+    name: proxy
+    external: true

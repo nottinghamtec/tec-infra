@@ -1,0 +1,175 @@
+---
+- name: Check the secrets have been provided
+  ansible.builtin.assert:
+    that:
+      - secrets | select('equalto', 'CHANGEME') | list | length == 0
+      - bookstack_distrust_oidc_secret | length == 32
+      - bookstack_db_password is match('^[A-Za-z0-9]+$')
+    fail_msg: >-
+      Every bookstack_* secret must be set (see inventory/group_vars/all/bookstack.yml), none may be the
+      CHANGEME placeholder, bookstack_distrust_oidc_secret must be exactly 32 bytes and bookstack_db_password only
+      letters and digits.
+    quiet: true
+  vars:
+    secrets:
+      - "{{ bookstack_db_password }}"
+      - "{{ bookstack_app_key }}"
+      - "{{ bookstack_oidc_client_secret }}"
+      - "{{ bookstack_distrust_discourse_secret }}"
+      - "{{ bookstack_distrust_oidc_secret }}"
+      - "{{ bookstack_distrust_oidc_private_key }}"
+  no_log: true
+
+# The root password is read from inside the container, so it never needs to be in the vault. The user may connect from
+# any address because the database is only reachable on the private "db" docker network.
+- name: Check whether the BookStack database and user exist
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ bookstack_db_container }}"
+      - sh
+      - -c
+      - >-
+        mariadb -uroot -p"${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" -N -B -e
+        "SELECT (SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '{{ bookstack_db_name }}')
+        + (SELECT COUNT(*) FROM mysql.user WHERE User = '{{ bookstack_db_user }}' AND Host = '%')"
+  register: bookstack_db_state
+  check_mode: false
+  changed_when: false
+
+- name: Create the BookStack database and user
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - -i
+      - "{{ bookstack_db_container }}"
+      - sh
+      - -c
+      - mariadb -uroot -p"${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}"
+    stdin: |
+      CREATE DATABASE IF NOT EXISTS `{{ bookstack_db_name }}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS '{{ bookstack_db_user }}'@'%' IDENTIFIED BY '{{ bookstack_db_password }}';
+      GRANT ALL PRIVILEGES ON `{{ bookstack_db_name }}`.* TO '{{ bookstack_db_user }}'@'%';
+    # Only ever creates; the change is reported from the check above.
+  changed_when: true
+  when: bookstack_db_state.stdout | trim != '2'
+  no_log: true
+
+- name: Create the project directory
+  ansible.builtin.file:
+    path: "{{ bookstack_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Write the compose file
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ bookstack_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: bookstack_compose
+
+- name: Write the compose secrets
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ bookstack_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  register: bookstack_secrets
+  no_log: true
+
+# distrust runs as the unprivileged "nonroot" user (65532) in its image.
+- name: Write the distrust configuration
+  ansible.builtin.template:
+    src: distrust.yml.j2
+    dest: "{{ bookstack_dir }}/distrust.yml"
+    owner: "65532"
+    group: "65532"
+    mode: "0400"
+  register: bookstack_distrust_config
+  no_log: true
+
+- name: Start BookStack and distrust
+  community.docker.docker_compose_v2:
+    project_src: "{{ bookstack_dir }}"
+    state: present
+    pull: missing
+    recreate: "{{ 'always' if (bookstack_compose is changed or bookstack_secrets is changed or bookstack_distrust_config is changed) else 'auto' }}"
+  # In check mode the compose files may not exist yet.
+  when: not (ansible_check_mode and (bookstack_compose is changed or bookstack_secrets is changed))
+
+# These settings live in BookStack's database, not its environment. The tables appear once its first start has
+# finished the migrations.
+- name: Wait for BookStack's database tables
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ bookstack_db_container }}"
+      - sh
+      - -c
+      - >-
+        mariadb -uroot -p"${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" -N -B {{ bookstack_db_name }} -e
+        "SELECT COUNT(*) FROM roles; SELECT COUNT(*) FROM settings"
+  register: bookstack_tables
+  until: bookstack_tables is succeeded
+  retries: 30
+  delay: 5
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Check the BookStack settings
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ bookstack_db_container }}"
+      - sh
+      - -c
+      - >-
+        mariadb -uroot -p"${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" -N -B {{ bookstack_db_name }} -e
+        "SELECT (SELECT COUNT(*) FROM roles WHERE system_name = 'admin' AND external_auth_id = '{{ bookstack_admin_group }}')
+        + (SELECT COUNT(*) FROM settings s JOIN roles r ON r.id = s.value
+        WHERE s.setting_key = 'registration-role' AND r.display_name = '{{ bookstack_default_role }}')
+        + (SELECT COUNT(*) FROM settings WHERE (setting_key, value) IN
+        ({% for key, value in bookstack_db_settings.items() %}('{{ key }}', '{{ value }}'){{ ',' if not loop.last }}{% endfor %}))"
+  register: bookstack_roles_state
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Set the BookStack name, admin group and default role
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - -i
+      - "{{ bookstack_db_container }}"
+      - sh
+      - -c
+      - mariadb -uroot -p"${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" {{ bookstack_db_name }}
+    stdin: |
+      UPDATE roles SET external_auth_id = '{{ bookstack_admin_group }}' WHERE system_name = 'admin';
+      INSERT INTO settings (setting_key, value, type, created_at, updated_at)
+        SELECT 'registration-role', id, 'string', NOW(), NOW() FROM roles
+        WHERE display_name = '{{ bookstack_default_role }}' AND COALESCE(system_name, '') = '' LIMIT 1
+        ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW();
+      {% for key, value in bookstack_db_settings.items() %}
+      INSERT INTO settings (setting_key, value, type, created_at, updated_at)
+        VALUES ('{{ key }}', '{{ value }}', 'string', NOW(), NOW())
+        ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW();
+      {% endfor %}
+  register: bookstack_roles_set
+  changed_when: true
+  when: not ansible_check_mode and bookstack_roles_state.stdout | trim != (2 + bookstack_db_settings | length) | string
+
+# BookStack caches its settings.
+- name: Clear BookStack's cache
+  ansible.builtin.command: docker exec bookstack php /app/www/artisan cache:clear
+  changed_when: true
+  when: bookstack_roles_set is changed  # noqa: no-handler

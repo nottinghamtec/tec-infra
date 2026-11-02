@@ -1,0 +1,19 @@
+# {{ ansible_managed }}
+listenAddr: 0.0.0.0:3000
+log:
+  level: info
+discourse:
+  server: {{ bookstack_distrust_discourse_url | to_json }}
+  secret: {{ bookstack_distrust_discourse_secret | to_json }}
+oidc:
+  secret: {{ bookstack_distrust_oidc_secret | to_json }}
+  privateKey: |
+{{ bookstack_distrust_oidc_private_key | trim | indent(4, first=true) }}
+clients:
+  {{ bookstack_oidc_client_id }}:
+    secret: {{ bookstack_oidc_client_secret | to_json }}
+    redirectURIs:
+      - https://{{ bookstack_hostname }}/oidc/callback
+{% if bookstack_distrust_allow_groups | length > 0 %}
+    allowGroups: {{ bookstack_distrust_allow_groups | to_json }}
+{% endif %}

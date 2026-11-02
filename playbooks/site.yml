@@ -1,5 +1,5 @@
 ---
-- name: Configure servers
+- name: Configure common server baseline
   hosts: servers
   become: true
   roles:
@@ -17,6 +17,11 @@
       tags: [swap]
     - role: docker
       tags: [docker]
+
+- name: Configure PyRIGS stack
+  hosts: rigs
+  become: true
+  roles:
     - role: postgres
       tags: [postgres]
     - role: pyrigs
@@ -25,3 +30,17 @@
       tags: [nginx, certbot]
     - role: certbot
       tags: [certbot]
+
+- name: Configure BookStack and distrust
+  hosts: bookstack
+  become: true
+  roles:
+    - role: bookstack
+      tags: [bookstack]
+
+- name: Configure the reverse proxy
+  hosts: ingress
+  become: true
+  roles:
+    - role: ingress
+      tags: [ingress]

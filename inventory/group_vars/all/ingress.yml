@@ -1,0 +1,51 @@
+---
+# Replaces nginx-proxy-manager on techost (see the ingress role).
+ingress_htpasswd: "{{ vault_ingress_htpasswd }}"
+
+ingress_sites:
+  - name: wiki
+    domains: [wiki.nottinghamtec.co.uk]
+    cert_name: npm-1
+    upstream: http://wiki:80
+    force_ssl: false
+    websocket: true
+    basic_auth: true
+    block_exploits: true
+    extra_config: |
+      proxy_buffering off;
+      proxy_buffer_size 16k;
+      proxy_busy_buffers_size 24k;
+      proxy_buffers 64 4k;
+  - name: members
+    domains: [members.nottinghamtec.co.uk]
+    cert_name: npm-2
+    upstream: http://members-webserver:80
+    basic_auth: true
+    block_exploits: true
+    extra_config: |
+      rewrite ^/price$ {{ vault_ingress_price_list_url }} permanent;
+      rewrite ^/wiki$ https://wiki.nottinghamtec.co.uk/$1 permanent;
+  - name: passwords
+    domains: [passwords.nottinghamtec.co.uk]
+    cert_name: npm-9
+    upstream: http://vaultwarden:80
+    websocket: true
+    block_exploits: true
+  - name: bookstack
+    domains: [bookstack.nottinghamtec.co.uk]
+    cert_name: npm-10
+    upstream: http://bookstack:80
+  - name: distrust
+    domains: [distrust.nottinghamtec.co.uk]
+    cert_name: npm-11
+    upstream: http://distrust:3000
+
+ingress_redirects:
+  - domains: [nottinghamtec.co.uk]
+    cert_name: npm-3
+    target: https://www.nottinghamtec.co.uk
+    preserve_path: true
+  - domains: [expenses.nottinghamtec.co.uk]
+    cert_name: npm-5
+    target: "{{ vault_ingress_expenses_url }}"
+    code: 307

@@ -1,0 +1,15 @@
+---
+# Values for the bookstack role; the secrets live in the vault (vault.yml).
+bookstack_db_password: "{{ vault_bookstack_db_password }}"
+bookstack_app_key: "{{ vault_bookstack_app_key }}"
+bookstack_oidc_client_secret: "{{ vault_bookstack_oidc_client_secret }}"
+bookstack_distrust_discourse_secret: "{{ vault_bookstack_distrust_discourse_secret }}"
+bookstack_distrust_oidc_secret: "{{ vault_bookstack_distrust_oidc_secret }}"
+bookstack_distrust_oidc_private_key: "{{ vault_bookstack_distrust_oidc_private_key }}"
+
+# Outgoing mail uses the same noreply mailbox as PyRIGS.
+bookstack_mail_host: "{{ pyrigs_env.EMAIL_HOST }}"
+bookstack_mail_port: "{{ pyrigs_env.EMAIL_PORT }}"
+bookstack_mail_username: "{{ pyrigs_env.EMAIL_HOST_USER }}"
+bookstack_mail_from: "{{ pyrigs_env.EMAIL_FROM }}"
+bookstack_mail_password: "{{ vault_pyrigs_secret_env.EMAIL_HOST_PASSWORD }}"

@@ -1,0 +1,73 @@
+---
+# Compose project directory, in root's home directory.
+bookstack_dir: /root/bookstack
+bookstack_timezone: Europe/London
+
+bookstack_hostname: bookstack.nottinghamtec.co.uk
+# distrust must be reachable from users' browsers (it receives the redirect from BookStack) and from the BookStack
+# container (token and key requests), so it gets its own public hostname.
+bookstack_distrust_hostname: distrust.nottinghamtec.co.uk
+
+bookstack_image: lscr.io/linuxserver/bookstack:latest
+bookstack_distrust_image: ghcr.io/parkour-vienna/distrust:0.1.0
+
+# The existing MariaDB container on the shared "db" docker network. The role creates the database and user in it.
+bookstack_db_container: database
+bookstack_db_host: database
+bookstack_db_name: bookstack
+bookstack_db_user: bookstack
+
+# Discourse instance that distrust authenticates users against. It needs the "enable discourse connect provider" site
+# setting and a "discourse connect provider secrets" entry for bookstack_distrust_hostname with the secret below.
+bookstack_distrust_discourse_url: https://forum.nottinghamtec.co.uk
+# Only members of one of these Discourse groups may sign in to BookStack. Empty allows every Discourse user.
+bookstack_distrust_allow_groups: []
+bookstack_oidc_client_id: bookstack
+bookstack_oidc_name: TEC Forum
+# Where uploaded images are served from. "local_secure_restricted" serves them only to signed-in users who may view the
+# page they belong to; "local" serves them as public files (anyone with the URL). Set this before images are uploaded:
+# changing it later means moving the existing files.
+bookstack_image_storage: local_secure_restricted
+
+# Name shown in the top left of every page and in emails (BookStack's "Application Name" setting).
+bookstack_app_name: TEC Wiki
+# Main accent colour (header bar, buttons) in light and dark mode. Links and the book/chapter/page colours are left at
+# BookStack's defaults.
+bookstack_accent_color: "#5b6068"
+bookstack_accent_color_dark: "#454a51"
+# What the home page shows: default, books, bookshelves or page.
+bookstack_homepage: books
+# Books per page on the home page and book lists (BookStack's default is 18).
+bookstack_books_per_page: 48
+
+# Every account gets this BookStack role when it is created and on each login. Members of the Discourse group named
+# below also get the Admin role. Both are stored in BookStack's database, so the role sets them there.
+bookstack_default_role: Editor
+bookstack_admin_group: admins
+# Skip BookStack's login page and go straight to the OIDC provider.
+bookstack_auto_initiate: false
+
+# Outgoing mail (SMTP). Nothing is sent unless a host is set. The password is kept out of compose.yml.
+bookstack_mail_host: ""
+bookstack_mail_port: 587
+bookstack_mail_username: ""
+bookstack_mail_password: ""
+bookstack_mail_from: ""
+bookstack_mail_from_name: TEC Wiki
+# "tls" is STARTTLS (port 587), "ssl" is implicit TLS (port 465).
+bookstack_mail_encryption: tls
+
+# Extra BookStack settings (see BookStack's .env.example.complete), merged over the generated environment.
+bookstack_extra_env: {}
+
+# Secrets, supplied from the vault (see inventory/group_vars/all/bookstack.yml). The database password may only contain
+# letters and digits.
+bookstack_db_password: CHANGEME
+bookstack_app_key: CHANGEME
+bookstack_oidc_client_secret: CHANGEME
+bookstack_distrust_discourse_secret: CHANGEME
+# Must be exactly 32 bytes.
+bookstack_distrust_oidc_secret: CHANGEME
+# PEM RSA private key (`docker run --rm ghcr.io/parkour-vienna/distrust:0.1.0 genkey`). Without a stable key every
+# issued token is invalidated when distrust restarts.
+bookstack_distrust_oidc_private_key: CHANGEME
