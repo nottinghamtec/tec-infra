@@ -68,6 +68,12 @@ pyrigs_cron_jobs:
     minute: "0"
     hour: "7-23"
     command: python manage.py award_badges --quiet
+  - name: pyrigs full-text grammar refresh
+    tag: pyrigs-refresh-search-vocabulary
+    minute: "0"
+    hour: "7"
+    weekday: "0"
+    command: python manage.py refresh_search_vocabulary
 
 # After a deploy the new container must answer this path (sent with the Host and X-Forwarded-Proto the proxy would
 # add) or the deploy rolls back.

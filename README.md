@@ -242,12 +242,13 @@ restarts automatically.
 written to `/etc/cron.d/pyrigs`. Each runs `docker exec pyrigs ...` and logs to
 the journal. Times are server time (UTC).
 
-| Job       | When            | Command                                                  |
-| --------- | --------------- | -------------------------------------------------------- |
-| Cleanup   | daily at 00:00  | `manage.py cleanupregistration` then `manage.py usercleanup` |
-| Reminders | daily at 08:00  | `manage.py send_reminders`                               |
-| Check-out nags | daily at 17:00 | `manage.py send_checkout_nags`                      |
-| Badges    | hourly, 07:00–23:00 | `manage.py award_badges --quiet`                     |
+| Job                       | When                      | Command                                                      |
+| ------------------------- | ------------------------- | ------------------------------------------------------------ |
+| Cleanup                   | daily at 00:00            | `manage.py cleanupregistration` then `manage.py usercleanup` |
+| Reminders                 | daily at 08:00            | `manage.py send_reminders`                                   |
+| Check-out nags            | daily at 17:00            | `manage.py send_checkout_nags`                               |
+| Badges                    | hourly, 07:00–23:00       | `manage.py award_badges --quiet`                             |
+| Full-text grammar refresh | weekly on Sunday at 07:00 | `manage.py refresh_search_vocabulary`                        |
 
 ```bash
 journalctl -t pyrigs-cleanup

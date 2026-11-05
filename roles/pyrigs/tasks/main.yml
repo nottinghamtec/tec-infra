@@ -142,6 +142,7 @@
     user: root
     minute: "{{ item.minute }}"
     hour: "{{ item.hour }}"
+    weekday: "{{ item.weekday | default('*') }}"
     job: >-
       docker exec {{ pyrigs_container_name }} sh -c '{{ item.command }}' 2>&1
       | logger -t {{ item.tag }}
