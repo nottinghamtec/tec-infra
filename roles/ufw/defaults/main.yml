@@ -5,6 +5,7 @@ ufw_allowed_ports:
   - { port: 22, proto: tcp, comment: SSH }
   - { port: 80, proto: tcp, comment: HTTP }
   - { port: 443, proto: tcp, comment: HTTPS }
+  - { port: 443, proto: udp, comment: QUIC }
 
 # Additional rules on top of ufw_allowed_ports. Each entry takes port, proto,
 # comment and an optional from_ip to restrict the source address.
