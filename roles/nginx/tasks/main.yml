@@ -67,3 +67,21 @@
 
     - name: Configure site vhosts
       ansible.builtin.include_tasks: vhosts.yml
+
+- name: Add the fail2ban filter for WordPress and PHP scanners
+  ansible.builtin.copy:
+    src: nginx-scanner.conf
+    dest: /etc/fail2ban/filter.d/nginx-scanner.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Add the fail2ban jail for WordPress and PHP scanners
+  ansible.builtin.template:
+    src: nginx-scanner.local.j2
+    dest: /etc/fail2ban/jail.d/nginx-scanner.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban

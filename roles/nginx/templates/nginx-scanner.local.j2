@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+[nginx-scanner]
+enabled = true
+port = http,https
+filter = nginx-scanner
+logpath = /var/log/nginx/access.log
+maxretry = {{ nginx_scanner_maxretry }}
+findtime = {{ nginx_scanner_findtime }}
+bantime = {{ nginx_scanner_bantime }}

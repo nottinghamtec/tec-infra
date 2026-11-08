@@ -10,3 +10,8 @@ nginx_acme_webroot: /var/www/certbot
 #     auth_paths: [user/login]        # optional, POSTs to these paths are rate limited per address
 # A site gets HTTPS once /etc/letsencrypt/live/<name>/ exists.
 nginx_sites: []
+
+# fail2ban bans addresses that repeatedly request WordPress or PHP paths that 404 (this host runs no PHP).
+nginx_scanner_maxretry: 5
+nginx_scanner_findtime: 10m
+nginx_scanner_bantime: 1d
