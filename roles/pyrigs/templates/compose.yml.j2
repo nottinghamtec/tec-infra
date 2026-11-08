@@ -10,6 +10,7 @@ services:
       - "{{ pyrigs_bind_address }}:{{ pyrigs_port }}:{{ pyrigs_container_port }}"
     volumes:
       - "{{ pyrigs_postgres_socket_dir }}:{{ pyrigs_postgres_socket_dir }}"
+      - access_logs:/var/log/pyrigs
     command:
       - sh
       - -c
@@ -35,3 +36,8 @@ services:
       options:
         max-size: 10m
         max-file: "3"
+
+volumes:
+  # Daily access logs (one file per day, pruned by the app after ACCESS_LOG_DAYS); survives redeploys.
+  # Read them as root under `docker volume inspect pyrigs_access_logs`.
+  access_logs:
