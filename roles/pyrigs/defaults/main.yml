@@ -68,6 +68,11 @@ pyrigs_cron_jobs:
     minute: "0"
     hour: "7-23"
     command: python manage.py award_badges --quiet
+  - name: pyrigs notifications
+    tag: pyrigs-notifications
+    minute: "*"
+    hour: "*"
+    command: python manage.py send_notifications --quiet
   - name: pyrigs full-text grammar refresh
     tag: pyrigs-refresh-search-vocabulary
     minute: "0"

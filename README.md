@@ -210,10 +210,24 @@ uv run ansible-vault edit inventory/group_vars/all/vault.yml   # change
 ```
 
 The vault holds `vault_postgres_rigs_password` (the `rigs` database password) and
-`vault_pyrigs_secret_env` (PyRIGS secrets such as `SECRET_KEY`).
+`vault_pyrigs_secret_env` (PyRIGS secrets such as `SECRET_KEY`, and the web push keys).
 
 - **Rotate the database password:** edit the vault, then run
   `--tags postgres,pyrigs`.
+- **Set up web push notifications:** PyRIGS sends browser notifications only while
+  `VAPID_PRIVATE_KEY` and `VAPID_PUBLIC_KEY` are set. Once an image containing the
+  `notifications` app is deployed, generate a pair, add both lines to
+  `vault_pyrigs_secret_env` as `VAPID_PRIVATE_KEY` and `VAPID_PUBLIC_KEY`, then run
+  `--tags pyrigs`:
+
+  ```bash
+  docker exec pyrigs python manage.py generate_vapid_keys
+  ```
+
+  Optionally set `VAPID_SUBJECT` (a `mailto:` address push services can contact) in
+  `pyrigs_env`; it defaults to `mailto:it@<DOMAIN>`. Rotating the pair is safe: devices
+  re-subscribe themselves the next time someone opens RIGS. Without the keys, the
+  Notifications box and push stay off and everything else works.
 - **Rotate the vault password:** `uv run ansible-vault rekey inventory/group_vars/all/vault.yml`,
   then share the new password with the team and update `.vault_pass`.
 
@@ -248,6 +262,7 @@ the journal. Times are server time (UTC).
 | Reminders                 | daily at 08:00            | `manage.py send_reminders`                                   |
 | Check-out nags            | daily at 17:00            | `manage.py send_checkout_nags`                               |
 | Badges                    | hourly, 07:00–23:00       | `manage.py award_badges --quiet`                             |
+| Notifications             | every minute              | `manage.py send_notifications --quiet`                       |
 | Full-text grammar refresh | weekly on Sunday at 07:00 | `manage.py refresh_search_vocabulary`                        |
 
 ```bash
@@ -255,6 +270,7 @@ journalctl -t pyrigs-cleanup
 journalctl -t pyrigs-reminders
 journalctl -t pyrigs-checkout-nags
 journalctl -t pyrigs-badges
+journalctl -t pyrigs-notifications   # only logs when something was queued or sent
 ```
 
 ### Certificates
