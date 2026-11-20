@@ -1,0 +1,8 @@
+---
+crowdsec_bouncer_key_seed: "{{ vault_crowdsec_bouncer_key_seed }}"
+crowdsec_console_enrollment_key: "{{ vault_crowdsec_console_enrollment_key | default('') }}"
+crowdsec_slack_webhook: "{{ vault_crowdsec_slack_webhook | default('') }}"
+crowdsec_turnstile_site_key: "{{ vault_crowdsec_turnstile_site_key | default('') }}"
+crowdsec_turnstile_secret_key: "{{ vault_crowdsec_turnstile_secret_key | default('') }}"
+
+crowdsec_whitelist_ips: []

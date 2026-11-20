@@ -1,0 +1,29 @@
+---
+- name: Install the firewall bouncer
+  ansible.builtin.apt:
+    name: crowdsec-firewall-bouncer-nftables
+    state: present
+  register: crowdsec_firewall_install
+
+- name: Register the firewall bouncer
+  ansible.builtin.include_tasks: bouncer.yml
+  vars:
+    crowdsec_bouncer_name: ansible-firewall
+    crowdsec_bouncer_key: "{{ crowdsec_firewall_bouncer_key }}"
+
+- name: Configure the firewall bouncer
+  ansible.builtin.template:
+    src: firewall-bouncer.yaml.j2
+    dest: /etc/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart crowdsec firewall bouncer
+
+- name: Enable and start the firewall bouncer
+  ansible.builtin.service:
+    name: crowdsec-firewall-bouncer
+    state: started
+    enabled: true
+  when: not (ansible_check_mode and crowdsec_firewall_install is changed)

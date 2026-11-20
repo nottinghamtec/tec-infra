@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+share_manual_decisions: {{ crowdsec_console_share_manual | bool | lower }}
+share_custom: {{ crowdsec_console_share_custom | bool | lower }}
+share_tainted: {{ crowdsec_console_share_tainted | bool | lower }}
+share_context: {{ crowdsec_console_share_context | bool | lower }}
+console_management: false

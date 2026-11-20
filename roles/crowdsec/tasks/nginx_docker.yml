@@ -1,0 +1,51 @@
+---
+- name: Find the proxy network gateway
+  ansible.builtin.include_tasks: docker_gateway.yml
+
+- name: Allow the proxy containers to reach the CrowdSec APIs
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: tcp
+    from_ip: "{{ crowdsec_docker_subnet }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { port: "{{ crowdsec_lapi_port }}", comment: CrowdSec LAPI from Docker }
+    - { port: "{{ crowdsec_appsec_port }}", comment: CrowdSec AppSec from Docker }
+  loop_control:
+    label: "{{ item.port }}"
+
+- name: Look for the running proxy
+  community.docker.docker_container_info:
+    name: "{{ crowdsec_ingress_container }}"
+  register: crowdsec_proxy_container
+
+- name: Work out whether the proxy runs the OpenResty image
+  ansible.builtin.set_fact:
+    crowdsec_proxy_ready: >-
+      {{ crowdsec_proxy_container.exists
+         and crowdsec_proxy_container.container.Config.Image == crowdsec_openresty_image }}
+
+- name: Load the bouncer into the proxy
+  ansible.builtin.template:
+    src: crowdsec_openresty.conf.j2
+    dest: "{{ crowdsec_ingress_dir }}/conf.d/05-crowdsec.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  when: crowdsec_proxy_ready | bool
+  notify: Restart ingress nginx
+
+- name: Unload the bouncer while the proxy is not on the OpenResty image
+  ansible.builtin.file:
+    path: "{{ crowdsec_ingress_dir }}/conf.d/05-crowdsec.conf"
+    state: absent
+  when: not (crowdsec_proxy_ready | bool)
+  notify: Restart ingress nginx
+
+- name: Explain why the bouncer was not loaded
+  ansible.builtin.debug:
+    msg: >-
+      The proxy is not running {{ crowdsec_openresty_image }} yet, so the CrowdSec bouncer was not loaded.
+      Run the ingress role (--tags ingress,crowdsec) to switch it over.
+  when: not (crowdsec_proxy_ready | bool)

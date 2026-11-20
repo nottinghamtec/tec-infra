@@ -7,8 +7,6 @@
       tags: [users]
     - role: ssh
       tags: [ssh]
-    - role: fail2ban
-      tags: [fail2ban]
     - role: ufw
       tags: [ufw]
     - role: unattended_upgrades
@@ -19,6 +17,8 @@
       tags: [swap]
     - role: docker
       tags: [docker]
+    - role: crowdsec
+      tags: [crowdsec]
 
 - name: Configure PyRIGS stack
   hosts: rigs
@@ -32,6 +32,13 @@
       tags: [nginx, certbot]
     - role: certbot
       tags: [certbot]
+  tasks:
+    - name: Integrate CrowdSec with nginx
+      ansible.builtin.import_role:
+        name: crowdsec
+        tasks_from: nginx.yml
+      when: crowdsec_nginx_mode == 'host'
+      tags: [crowdsec]
 
 - name: Configure BookStack and distrust
   hosts: bookstack
@@ -43,6 +50,20 @@
 - name: Configure the reverse proxy
   hosts: ingress
   become: true
+  pre_tasks:
+    - name: Build the OpenResty image with the CrowdSec bouncer
+      ansible.builtin.import_role:
+        name: crowdsec
+        tasks_from: nginx_docker_image.yml
+      when: crowdsec_nginx_mode == 'docker'
+      tags: [crowdsec, ingress]
   roles:
     - role: ingress
       tags: [ingress]
+  tasks:
+    - name: Integrate CrowdSec with nginx
+      ansible.builtin.import_role:
+        name: crowdsec
+        tasks_from: nginx.yml
+      when: crowdsec_nginx_mode == 'docker'
+      tags: [crowdsec]

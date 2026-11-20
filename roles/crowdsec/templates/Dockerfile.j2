@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+FROM {{ crowdsec_openresty_base_image }}
+RUN apk add --no-cache git \
+    && opm get pintsized/lua-resty-http \
+    && git clone --depth 1 -b {{ crowdsec_lua_bouncer_version }} https://github.com/crowdsecurity/lua-cs-bouncer.git /lua-cs-bouncer \
+    && mkdir -p /var/lib/crowdsec/lua/templates /etc/crowdsec/bouncers \
+    && cp -R /lua-cs-bouncer/lib/* /usr/local/openresty/lualib/ \
+    && cp -R /lua-cs-bouncer/templates/* /var/lib/crowdsec/lua/templates/ \
+    && rm -rf /lua-cs-bouncer \
+    && apk del git

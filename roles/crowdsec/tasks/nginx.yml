@@ -1,0 +1,70 @@
+---
+- name: Check CrowdSec is installed
+  ansible.builtin.stat:
+    path: /usr/bin/cscli
+  register: crowdsec_cscli
+
+- name: Integrate CrowdSec with nginx
+  when: crowdsec_cscli.stat.exists
+  block:
+    - name: Install the nginx and AppSec collections
+      ansible.builtin.include_tasks: collections.yml
+      vars:
+        crowdsec_wanted_collections: "{{ crowdsec_all_nginx_collections }}"
+
+    - name: Write the scanner scenario
+      ansible.builtin.template:
+        src: nginx-scanner.yaml.j2
+        dest: /etc/crowdsec/scenarios/ansible-nginx-scanner.yaml
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart crowdsec
+
+    - name: Make sure the acquisition directory exists
+      ansible.builtin.file:
+        path: /etc/crowdsec/acquis.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Write the nginx log acquisition
+      ansible.builtin.template:
+        src: acquis-nginx.yaml.j2
+        dest: /etc/crowdsec/acquis.d/ansible-nginx.yaml
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart crowdsec
+
+    - name: Write the AppSec acquisition
+      ansible.builtin.template:
+        src: acquis-appsec.yaml.j2
+        dest: /etc/crowdsec/acquis.d/ansible-appsec.yaml
+        owner: root
+        group: root
+        mode: "0644"
+      when: crowdsec_appsec_active | bool
+      notify: Restart crowdsec
+
+    - name: Remove the AppSec acquisition
+      ansible.builtin.file:
+        path: /etc/crowdsec/acquis.d/ansible-appsec.yaml
+        state: absent
+      when: not (crowdsec_appsec_active | bool)
+      notify: Restart crowdsec
+
+    - name: Register the nginx bouncer
+      ansible.builtin.include_tasks: bouncer.yml
+      vars:
+        crowdsec_bouncer_name: ansible-nginx
+        crowdsec_bouncer_key: "{{ crowdsec_nginx_bouncer_key }}"
+
+    - name: Configure nginx on the host
+      ansible.builtin.include_tasks: nginx_host.yml
+      when: crowdsec_nginx_mode == 'host'
+
+    - name: Configure nginx in Docker
+      ansible.builtin.include_tasks: nginx_docker.yml
+      when: crowdsec_nginx_mode == 'docker'

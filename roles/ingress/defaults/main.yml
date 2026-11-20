@@ -5,6 +5,9 @@ ingress_nginx_image: nginx:stable
 ingress_certbot_image: certbot/certbot:latest
 ingress_container_name: nginx
 
+# Extra volume mounts for the proxy container, as compose volume strings.
+ingress_extra_volumes: []
+
 # Host ports. Use other ports (for example 8080 and 8443) to try the proxy out while something else still holds 80/443.
 ingress_http_port: 80
 ingress_https_port: 443

@@ -14,6 +14,9 @@ services:
       - ./htpasswd:/etc/nginx/htpasswd:ro
       - ./letsencrypt:/etc/letsencrypt:ro
       - ./webroot:/var/www/certbot:ro
+{% for volume in ingress_extra_volumes %}
+      - {{ volume }}
+{% endfor %}
     networks:
       {{ ingress_network }}:
         # Containers reach each other through the proxy by the public names.

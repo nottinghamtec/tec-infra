@@ -8,5 +8,4 @@ galaxy_info:
     - name: Ubuntu
       versions: [all]
   galaxy_tags: [nginx]
-dependencies:
-  - role: fail2ban
+dependencies: []

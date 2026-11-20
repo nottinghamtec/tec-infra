@@ -1,0 +1,72 @@
+---
+crowdsec_apt_uri: https://packagecloud.io/crowdsec/crowdsec/any/
+crowdsec_apt_suite: any
+
+crowdsec_nginx_mode: none
+crowdsec_bouncer_key_seed: ""
+
+crowdsec_lapi_port: 8080
+crowdsec_appsec_port: 7422
+
+crowdsec_collections:
+  - crowdsecurity/linux
+  - crowdsecurity/sshd
+crowdsec_journal_units:
+  - ssh.service
+  - sshd.service
+
+crowdsec_nginx_collections:
+  - crowdsecurity/nginx
+  - crowdsecurity/base-http-scenarios
+  - crowdsecurity/http-cve
+
+crowdsec_whitelist_ips: []
+crowdsec_whitelist_cidrs:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+
+crowdsec_ban_duration: 4h
+crowdsec_scanner_ban_duration: 24h
+crowdsec_scanner_capacity: 4
+crowdsec_scanner_leakspeed: 2m
+crowdsec_scanner_path_regex: '([.]php|/wp-[^/ ?]*|/wordpress/|/xmlrpc)'
+
+crowdsec_remove_fail2ban: true
+
+crowdsec_firewall_bouncer_enabled: true
+
+crowdsec_console_enrollment_key: ""
+crowdsec_console_share_custom: true
+crowdsec_console_share_tainted: true
+crowdsec_console_share_manual: false
+crowdsec_console_share_context: false
+
+crowdsec_slack_webhook: ""
+
+crowdsec_appsec_enabled: true
+crowdsec_appsec_collections:
+  - crowdsecurity/appsec-virtual-patching
+  - crowdsecurity/appsec-generic-rules
+crowdsec_appsec_configs:
+  - crowdsecurity/appsec-default
+crowdsec_appsec_failure_action: passthrough
+
+crowdsec_turnstile_site_key: ""
+crowdsec_turnstile_secret_key: ""
+crowdsec_captcha_scenarios:
+  - crowdsecurity/http-crawl-non_statics
+  - crowdsecurity/http-probing
+  - crowdsecurity/http-generic-bf
+crowdsec_captcha_duration: 4h
+
+crowdsec_docker_sources: []
+crowdsec_extra_collections: []
+
+crowdsec_ingress_dir: /root/ingress
+crowdsec_ingress_container: nginx
+crowdsec_docker_network: proxy
+crowdsec_docker_subnet: 172.16.0.0/12
+crowdsec_openresty_base_image: openresty/openresty:alpine-fat
+crowdsec_openresty_image: ingress-openresty-crowdsec:local
+crowdsec_lua_bouncer_version: v1.0.19

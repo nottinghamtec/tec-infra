@@ -1,0 +1,13 @@
+---
+- name: List registered bouncers
+  ansible.builtin.command: cscli bouncers list -o json
+  register: crowdsec_bouncers_listed
+  changed_when: false
+  check_mode: false
+
+- name: Register the bouncer
+  ansible.builtin.command:
+    argv: [cscli, bouncers, add, "{{ crowdsec_bouncer_name }}", --key, "{{ crowdsec_bouncer_key }}"]
+  when: crowdsec_bouncer_name not in (((crowdsec_bouncers_listed.stdout | from_json) or []) | map(attribute='name') | list)
+  changed_when: true
+  no_log: true

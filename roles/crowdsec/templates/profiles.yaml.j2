@@ -1,0 +1,42 @@
+# {{ ansible_managed }}
+{% macro notify() %}
+{% if crowdsec_slack_active | bool %}
+notifications:
+  - slack_default
+{% endif %}
+{% endmacro %}
+{% if crowdsec_nginx_enabled | bool %}
+name: scanner_ban
+filters:
+  - Alert.Remediation == true && Alert.GetScope() == "Ip" && Alert.GetScenario() == "ansible/nginx-scanner"
+decisions:
+  - type: ban
+    duration: {{ crowdsec_scanner_ban_duration }}
+{{ notify() }}on_success: break
+---
+{% endif %}
+{% if crowdsec_captcha_active | bool %}
+name: captcha_remediation
+filters:
+  - Alert.Remediation == true && Alert.GetScope() == "Ip" && Alert.GetScenario() in [{% for s in crowdsec_captcha_scenarios %}"{{ s }}"{{ ', ' if not loop.last }}{% endfor %}]
+decisions:
+  - type: captcha
+    duration: {{ crowdsec_captcha_duration }}
+{{ notify() }}on_success: break
+---
+{% endif %}
+name: default_ip_remediation
+filters:
+  - Alert.Remediation == true && Alert.GetScope() == "Ip"
+decisions:
+  - type: ban
+    duration: {{ crowdsec_ban_duration }}
+{{ notify() }}on_success: break
+---
+name: default_range_remediation
+filters:
+  - Alert.Remediation == true && Alert.GetScope() == "Range"
+decisions:
+  - type: ban
+    duration: {{ crowdsec_ban_duration }}
+{{ notify() }}on_success: break

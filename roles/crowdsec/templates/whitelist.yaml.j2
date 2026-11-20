@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+name: ansible/whitelists
+description: Addresses that are never banned
+whitelist:
+  reason: Ansible managed whitelist
+  ip:
+    - 127.0.0.1
+    - "::1"
+{% for ip in crowdsec_whitelist_ips %}
+    - {{ ip }}
+{% endfor %}
+  cidr:
+{% for cidr in crowdsec_whitelist_cidrs %}
+    - {{ cidr }}
+{% endfor %}

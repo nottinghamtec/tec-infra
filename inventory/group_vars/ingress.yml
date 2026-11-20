@@ -1,0 +1,11 @@
+---
+crowdsec_nginx_mode: docker
+
+ingress_nginx_image: "{{ crowdsec_openresty_image }}"
+ingress_extra_volumes:
+  - "{{ crowdsec_ingress_dir }}/crowdsec/crowdsec-openresty-bouncer.conf:/etc/crowdsec/bouncers/crowdsec-openresty-bouncer.conf:ro"
+
+crowdsec_docker_sources:
+  - container_name: vaultwarden
+    type: Dominic-Wagner/vaultwarden
+    collection: Dominic-Wagner/vaultwarden

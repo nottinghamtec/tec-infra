@@ -1,0 +1,25 @@
+---
+- name: Update the hub index
+  ansible.builtin.command: cscli hub update
+  changed_when: false
+  check_mode: false
+
+- name: List installed collections
+  ansible.builtin.command: cscli collections list -o json
+  register: crowdsec_collections_installed
+  changed_when: false
+  check_mode: false
+
+- name: Work out which collections are missing
+  ansible.builtin.set_fact:
+    crowdsec_missing_collections: >-
+      {{ crowdsec_wanted_collections | unique
+         | difference((((crowdsec_collections_installed.stdout | from_json) or {}).get('collections') or [])
+                      | map(attribute='name') | list) }}
+
+- name: Install missing collections
+  ansible.builtin.command:
+    argv: "{{ ['cscli', 'collections', 'install'] + crowdsec_missing_collections }}"
+  when: crowdsec_missing_collections | length > 0
+  changed_when: true
+  notify: Restart crowdsec

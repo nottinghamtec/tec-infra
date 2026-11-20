@@ -1,0 +1,16 @@
+---
+- name: Restart crowdsec
+  ansible.builtin.service:
+    name: crowdsec
+    state: restarted
+
+- name: Restart crowdsec firewall bouncer
+  ansible.builtin.service:
+    name: crowdsec-firewall-bouncer
+    state: restarted
+
+- name: Restart ingress nginx
+  ansible.builtin.command:
+    argv: [docker, restart, "{{ crowdsec_ingress_container }}"]
+  changed_when: true
+  failed_when: false

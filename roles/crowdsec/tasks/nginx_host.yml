@@ -1,0 +1,25 @@
+---
+- name: Install the nginx Lua bouncer
+  ansible.builtin.apt:
+    name:
+      - lua5.1
+      - libnginx-mod-http-lua
+      - luarocks
+      - gettext-base
+      - lua-cjson
+      - crowdsec-nginx-bouncer
+    state: present
+    cache_valid_time: 3600
+  notify: Restart nginx
+
+- name: Configure the nginx bouncer
+  ansible.builtin.template:
+    src: bouncer.conf.j2
+    dest: /etc/crowdsec/bouncers/crowdsec-nginx-bouncer.conf
+    owner: root
+    group: root
+    mode: "0600"
+  vars:
+    crowdsec_bouncer_key: "{{ crowdsec_nginx_bouncer_key }}"
+  no_log: true
+  notify: Restart nginx

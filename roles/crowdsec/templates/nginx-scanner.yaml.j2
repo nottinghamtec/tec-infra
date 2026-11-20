@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+type: leaky
+name: ansible/nginx-scanner
+description: Requests for WordPress and PHP paths that return 404 (these hosts run no PHP)
+filter: "evt.Meta.service == 'http' && evt.Meta.log_type in ['http_access-log', 'http_error-log'] && evt.Meta.http_status == '404' && evt.Meta.http_path matches '{{ crowdsec_scanner_path_regex }}'"
+groupby: evt.Meta.source_ip
+capacity: {{ crowdsec_scanner_capacity }}
+leakspeed: {{ crowdsec_scanner_leakspeed }}
+blackhole: 1m
+labels:
+  service: http
+  type: scan
+  remediation: true
+  confidence: 3
+  spoofable: 0
+  behavior: "http:scan"
+  label: "Ansible nginx scanner"

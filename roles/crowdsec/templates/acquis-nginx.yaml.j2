@@ -1,0 +1,23 @@
+# {{ ansible_managed }}
+{% if crowdsec_nginx_mode == 'host' %}
+source: file
+filenames:
+  - /var/log/nginx/access.log
+  - /var/log/nginx/error.log
+labels:
+  type: nginx
+{% else %}
+source: docker
+container_name:
+  - {{ crowdsec_ingress_container }}
+labels:
+  type: nginx
+{% endif %}
+{% for source in crowdsec_docker_sources %}
+---
+source: docker
+container_name:
+  - {{ source.container_name }}
+labels:
+  type: {{ source.type }}
+{% endfor %}

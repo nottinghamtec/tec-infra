@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+source: journalctl
+journalctl_filter:
+{% for unit in crowdsec_journal_units %}
+  - _SYSTEMD_UNIT={{ unit }}
+{% endfor %}
+labels:
+  type: syslog

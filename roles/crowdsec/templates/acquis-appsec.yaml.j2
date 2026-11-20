@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+source: appsec
+listen_addr: {{ crowdsec_lapi_listen_address }}:{{ crowdsec_appsec_port }}
+appsec_configs:
+{% for config in crowdsec_appsec_configs %}
+  - {{ config }}
+{% endfor %}
+labels:
+  type: appsec

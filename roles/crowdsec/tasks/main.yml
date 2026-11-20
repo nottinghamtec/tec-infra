@@ -1,0 +1,126 @@
+---
+- name: Check the bouncer key seed is set
+  ansible.builtin.assert:
+    that:
+      - crowdsec_bouncer_key_seed | length >= 32
+    fail_msg: crowdsec_bouncer_key_seed must be at least 32 characters (see inventory/group_vars/all/crowdsec.yml).
+    quiet: true
+
+- name: Install apt prerequisites
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - python3-debian
+    state: present
+    cache_valid_time: 3600
+
+- name: Add the CrowdSec apt repository
+  ansible.builtin.deb822_repository:
+    name: crowdsec
+    types: deb
+    uris: "{{ crowdsec_apt_uri }}"
+    suites: "{{ crowdsec_apt_suite }}"
+    components: main
+    signed_by: https://packagecloud.io/crowdsec/crowdsec/gpgkey
+    state: present
+  register: crowdsec_repo
+
+- name: Update apt cache after adding the repository
+  ansible.builtin.apt:
+    update_cache: true
+  when: crowdsec_repo is changed  # noqa: no-handler
+
+- name: Install CrowdSec
+  ansible.builtin.apt:
+    name: crowdsec
+    state: present
+  register: crowdsec_install
+  when: not (ansible_check_mode and crowdsec_repo is changed)
+
+- name: Configure CrowdSec
+  when: not (ansible_check_mode and (crowdsec_repo is changed or crowdsec_install is changed))
+  block:
+    - name: Set the local API listen address
+      ansible.builtin.template:
+        src: config.yaml.local.j2
+        dest: /etc/crowdsec/config.yaml.local
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart crowdsec
+
+    - name: Write the log acquisition configuration
+      ansible.builtin.template:
+        src: acquis.yaml.j2
+        dest: /etc/crowdsec/acquis.yaml
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart crowdsec
+
+    - name: Write the whitelist
+      ansible.builtin.template:
+        src: whitelist.yaml.j2
+        dest: /etc/crowdsec/parsers/s02-enrich/ansible-whitelist.yaml
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart crowdsec
+
+    - name: Write the remediation profiles
+      ansible.builtin.template:
+        src: profiles.yaml.j2
+        dest: /etc/crowdsec/profiles.yaml
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart crowdsec
+
+    - name: Write the Slack notification configuration
+      ansible.builtin.template:
+        src: slack.yaml.j2
+        dest: /etc/crowdsec/notifications/slack.yaml
+        owner: root
+        group: root
+        mode: "0600"
+      when: crowdsec_slack_active | bool
+      no_log: true
+      notify: Restart crowdsec
+
+    - name: Write the console sharing options
+      ansible.builtin.template:
+        src: console.yaml.j2
+        dest: /etc/crowdsec/console.yaml
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Restart crowdsec
+
+    - name: Enable and start CrowdSec
+      ansible.builtin.service:
+        name: crowdsec
+        state: started
+        enabled: true
+
+    - name: Install collections
+      ansible.builtin.include_tasks: collections.yml
+      vars:
+        crowdsec_wanted_collections: "{{ crowdsec_collections + crowdsec_extra_collections }}"
+
+    - name: Enrol in the CrowdSec Console
+      ansible.builtin.shell:
+        cmd: >-
+          cscli console enroll --name {{ inventory_hostname | quote }} {{ crowdsec_console_enrollment_key | quote }}
+          && touch /etc/crowdsec/.ansible-console-enrolled
+        creates: /etc/crowdsec/.ansible-console-enrolled
+      when: crowdsec_console_active | bool
+      no_log: true
+      notify: Restart crowdsec
+
+    - name: Install the firewall bouncer
+      ansible.builtin.include_tasks: firewall_bouncer.yml
+      when: crowdsec_firewall_bouncer_enabled | bool
+
+    - name: Remove fail2ban
+      ansible.builtin.include_tasks: remove_fail2ban.yml
+      when: crowdsec_remove_fail2ban | bool

@@ -1,0 +1,14 @@
+---
+crowdsec_lapi_listen_address: "{{ '0.0.0.0' if crowdsec_nginx_mode == 'docker' else '127.0.0.1' }}"
+crowdsec_nginx_enabled: "{{ crowdsec_nginx_mode in ['host', 'docker'] }}"
+crowdsec_appsec_active: "{{ crowdsec_nginx_enabled and crowdsec_appsec_enabled }}"
+crowdsec_captcha_active: "{{ crowdsec_nginx_enabled and crowdsec_turnstile_site_key | length > 0 and crowdsec_turnstile_secret_key | length > 0 }}"
+crowdsec_slack_active: "{{ crowdsec_slack_webhook | length > 0 }}"
+crowdsec_console_active: "{{ crowdsec_console_enrollment_key | length > 0 }}"
+crowdsec_firewall_bouncer_key: "{{ (crowdsec_bouncer_key_seed ~ ':' ~ inventory_hostname ~ ':ansible-firewall') | hash('sha256') }}"
+crowdsec_nginx_bouncer_key: "{{ (crowdsec_bouncer_key_seed ~ ':' ~ inventory_hostname ~ ':ansible-nginx') | hash('sha256') }}"
+crowdsec_nginx_api_host: "{{ '127.0.0.1' if crowdsec_nginx_mode == 'host' else crowdsec_docker_gateway | default('172.17.0.1') }}"
+crowdsec_all_nginx_collections: >-
+  {{ crowdsec_nginx_collections
+     + (crowdsec_appsec_collections if crowdsec_appsec_active | bool else [])
+     + (crowdsec_docker_sources | selectattr('collection', 'defined') | map(attribute='collection') | list) }}
